@@ -1378,7 +1378,8 @@
                 ? "https://mathfrotage.web.app"
                 : window.location.origin;
 
-            const urlAcesso = `${dominioBase}/index.html?token=${tokenId}`;
+            const caminhoBase = window.location.href.split('?')[0];
+            const urlAcesso = `${caminhoBase}?token=${tokenId}`;
             const msgTexto = `M.A.T.H. | FLUIDOS & INTEGRIDADE DE LUBRIFICANTES\nPainel técnico liberado para acompanhamento operacional.\nValidade: ${horasVal} Horas.\nLink: ${urlAcesso}`;
 
             if (navigator.share) {
