@@ -950,7 +950,7 @@
     const db = getDatabase(app);
 
     const USER_ADMIN = "MATHEUS";
-    const SENHA = "COELHO456";
+    const SENHA_MESTRA = "COELHO456";
 
     let listaAtivos = [];
     let listaAtivosUnicos = [];
@@ -1057,16 +1057,51 @@
         return false;
     };
 
-    /* CONTROLE GLOBAL DOS METODOS DE ACESSO */
-    window.executarLogin = () => {
-        const u = document.getElementById("loginUser").value.trim().toUpperCase();
+    /* VALIDAÇÃO DE AUTORIZAÇÃO / SENHA (SUPORTA SENHA MESTRA E USUÁRIOS DO FIREBASE) */
+    const validarCredencialOperacional = async (senhaDigitada) => {
+        if (senhaDigitada === SENHA_MESTRA) return true;
+        const usuarioLogado = localStorage.getItem("fluidos_session");
+        if (usuarioLogado) {
+            try {
+                const snap = await get(ref(db, `usuarios/${usuarioLogado.toLowerCase()}`));
+                if (snap.exists() && snap.val().senha === senhaDigitada) {
+                    return true;
+                }
+            } catch(e) {}
+        }
+        return false;
+    };
+
+    /* ETAPA 1: CONTROLE GLOBAL DE LOGIN COM CONSULTA DINÂMICA AO FIREBASE */
+    window.executarLogin = async () => {
+        const u = document.getElementById("loginUser").value.trim().toLowerCase();
         const p = document.getElementById("loginPass").value;
 
-        if (u === USER_ADMIN && p === SENHA) {
+        if (!u || !p) {
+            return alert("Preencha o usuário e a senha.");
+        }
+
+        // 1. Chave mestra de emergência
+        if (u.toUpperCase() === USER_ADMIN && p === SENHA_MESTRA) {
             localStorage.setItem("fluidos_session", "matheus");
             inicializarAplicacao();
-        } else {
+            return;
+        }
+
+        // 2. Consulta dinâmica ao nó usuarios/ do Realtime Database
+        try {
+            const snap = await get(ref(db, `usuarios/${u}`));
+            if (snap.exists()) {
+                const dadosUsuario = snap.val();
+                if (dadosUsuario.senha === p) {
+                    localStorage.setItem("fluidos_session", u);
+                    inicializarAplicacao();
+                    return;
+                }
+            }
             alert("Acesso negado. Credenciais incorretas.");
+        } catch (err) {
+            alert("Erro ao validar login no banco: " + err.message);
         }
     };
 
@@ -1230,7 +1265,8 @@
 
     window.confirmarExclusaoAtivo = async () => {
         const pass = document.getElementById("modalDelAssetPass").value;
-        if (pass !== SENHA) return alert("Senha incorreta! Operação cancelada.");
+        const valido = await validarCredencialOperacional(pass);
+        if (!valido) return alert("Senha incorreta! Operação cancelada.");
         if (!ativoParaExcluir) return;
 
         try {
@@ -1242,9 +1278,10 @@
         }
     };
 
-    window.abrirModalNovoAtivo = () => {
-        const pass = prompt("Autenticação Admin:");
-        if (pass !== SENHA) return alert("Senha incorreta!");
+    window.abrirModalNovoAtivo = async () => {
+        const pass = prompt("Autenticação Operacional:");
+        const valido = await validarCredencialOperacional(pass);
+        if (!valido) return alert("Senha incorreta!");
 
         const modelo = prompt("Digite o Modelo da Locomotiva (ex: GE, GE-U20-C, BB36-7):", "GE-U20-C");
         if (!modelo) return;
@@ -1327,7 +1364,8 @@
         const passVal = pass ? pass.value : "";
         const horasVal = horas ? horas.value : "24";
 
-        if (passVal !== SENHA) return alert("Autenticação inválida! Senha incorreta.");
+        const valido = await validarCredencialOperacional(passVal);
+        if (!valido) return alert("Autenticação inválida! Senha incorreta.");
 
         const tokenId = Math.random().toString(36).substr(2, 9);
         const tempoExpiracao = Date.now() + (parseInt(horasVal) * 3600000);
@@ -1340,7 +1378,7 @@
                 ? "https://mathfrotage.web.app"
                 : window.location.origin;
 
-            const urlAcesso = `${dominioBase}/fluidos.html?token=${tokenId}`;
+            const urlAcesso = `${dominioBase}/index.html?token=${tokenId}`;
             const msgTexto = `M.A.T.H. | FLUIDOS & INTEGRIDADE DE LUBRIFICANTES\nPainel técnico liberado para acompanhamento operacional.\nValidade: ${horasVal} Horas.\nLink: ${urlAcesso}`;
 
             if (navigator.share) {
@@ -1378,10 +1416,11 @@
         if (overlay) overlay.classList.remove("active");
     };
 
-    window.confirmarEmissaoPDFFluido = () => {
+    window.confirmarEmissaoPDFFluido = async () => {
         const passEl = document.getElementById("modalPDFFluidoPass");
         const senhaDigitada = passEl ? passEl.value : "";
-        if (senhaDigitada !== SENHA) {
+        const valido = await validarCredencialOperacional(senhaDigitada);
+        if (!valido) {
             return alert("Senha incorreta! Emissão cancelada.");
         }
         window.fecharModalSenhaPDFFluido();
@@ -1713,7 +1752,7 @@
                     labels: [],
                     datasets: [
                         {
-                            label: 'Pendentes ',
+                            label: 'Pendentes / Em Aberto',
                             data: [],
                             backgroundColor: gradPendente,
                             borderColor: '#f59e0b',
@@ -1722,7 +1761,7 @@
                             stack: 'statusStack'
                         },
                         {
-                            label: 'Liberados ',
+                            label: 'Liberados / Concluídos',
                             data: [],
                             backgroundColor: gradConcluido,
                             borderColor: '#10b981',
@@ -2089,8 +2128,11 @@
         document.getElementById("btnCancelarEdicao").style.display = "none";
     };
 
-    window.salvarNovaAnalise = () => {
-        if (document.getElementById("adminPassFluido").value !== SENHA) return alert("Autenticação inválida!");
+    window.salvarNovaAnalise = async () => {
+        const passDigitada = document.getElementById("adminPassFluido").value;
+        const valido = await validarCredencialOperacional(passDigitada);
+        if (!valido) return alert("Autenticação inválida!");
+
         const dataColetaBR = document.getElementById("cadDataColetaForm").value;
         const dataLaudoBR = document.getElementById("cadDataLaudoForm").value || dataColetaBR;
         if (!dataColetaBR) return alert("Preencha a data da coleta.");
@@ -2132,11 +2174,15 @@
         }
     };
 
-    window.deletarLaudo = (id) => {
-        if (prompt("Senha do Inspetor:") === SENHA) {
+    window.deletarLaudo = async (id) => {
+        const pass = prompt("Senha do Inspetor:");
+        const valido = await validarCredencialOperacional(pass);
+        if (valido) {
             remove(ref(db, `laudos_laboratoriais/${id}`))
                 .then(() => alert("Registro excluído com sucesso."))
                 .catch(err => alert("Erro ao excluir: " + err.message));
+        } else {
+            alert("Senha incorreta!");
         }
     };
 
@@ -2254,7 +2300,7 @@
             }
         } else {
             const sessaoAtiva = localStorage.getItem("fluidos_session");
-            if (sessaoAtiva === "matheus") {
+            if (sessaoAtiva) {
                 inicializarAplicacao();
             } else {
                 document.getElementById("telaLogin").style.display = "flex";
