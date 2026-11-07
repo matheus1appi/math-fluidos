@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR" locale="pt-BR" datepickerformatodata="dd/mm/yyyy" inputmaskformatodata="d/m/y">
+<html lang="pt-BR" locale="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,8 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <!-- EmailJS SDK para envio de confirmações por e-mail -->
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
     <style>
         :root {
@@ -431,11 +429,7 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .box-liberacao-item {
-            color: var(--text-main);
-            margin: 3px 0;
-            line-height: 1.4;
-        }
+        .box-liberacao-item { color: var(--text-main); margin: 3px 0; line-height: 1.4; }
 
         .btn-evidencia-badge {
             background: var(--iron);
@@ -451,10 +445,7 @@
             display: inline-flex;
             align-items: center;
         }
-        .btn-evidencia-badge:hover {
-            border-color: var(--accent-gold);
-            background: rgba(245, 158, 11, 0.1);
-        }
+        .btn-evidencia-badge:hover { border-color: var(--accent-gold); background: rgba(245, 158, 11, 0.1); }
 
         .lab-footer-dates { font-family: 'JetBrains Mono'; font-size: 10px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--card-border); padding-top: 10px; margin-top: 12px; flex-wrap: wrap; gap: 8px; }
         .datas-duplas-container { display: flex; gap: 16px; align-items: center; }
@@ -549,9 +540,9 @@
         }
     </style>
 </head>
-<body class="page-header-fixed page-sidebar-closed-hide-logo page-container-bg-solid" locale="pt-BR" datepickerformatodata="dd/mm/yyyy" inputmaskformatodata="d/m/y">
+<body class="page-header-fixed page-sidebar-closed-hide-logo page-container-bg-solid" locale="pt-BR">
 
-    <!-- TELA DE AUTENTICAÇÃO E REGISTO MODERNO -->
+    <!-- TELA DE AUTENTICAÇÃO E CADASTRO -->
     <div class="login-screen" id="telaLogin">
         <div class="login-card">
             <h2>M.A.T.H.</h2>
@@ -564,8 +555,8 @@
 
             <!-- FORMULÁRIO DE LOGIN -->
             <div id="boxFormLogin">
-                <input type="text" id="loginUser" placeholder="ID do Inspetor / Utilizador" autocomplete="off">
-                <input type="password" id="loginPass" placeholder="Senha Operacional">
+                <input type="text" id="loginUser" placeholder="E-mail ou ID do Inspetor" autocomplete="username">
+                <input type="password" id="loginPass" placeholder="Senha Operacional" autocomplete="current-password">
                 <button onclick="window.executarLogin()" class="btn-action" style="margin-top:8px;">AUTENTICAR NO SISTEMA</button>
             </div>
 
@@ -577,26 +568,16 @@
                 <label style="font-size:10px; font-family:'JetBrains Mono'; color:var(--text-muted); font-weight:700;">ID / MATRÍCULA OPERACIONAL</label>
                 <input type="text" id="regUserId" placeholder="Ex: carlos.silva">
 
-                <label style="font-size:10px; font-family:'JetBrains Mono'; color:var(--text-muted); font-weight:700;">E-MAIL CORPORATIVO / PESSOAL</label>
+                <label style="font-size:10px; font-family:'JetBrains Mono'; color:var(--text-muted); font-weight:700;">E-MAIL INSTITUCIONAL (ENVIO REAL DE LINK)</label>
                 <input type="email" id="regEmail" placeholder="seu.email@empresa.com">
 
                 <label style="font-size:10px; font-family:'JetBrains Mono'; color:var(--text-muted); font-weight:700;">OFICINA / CARGO TÉCNICO</label>
                 <input type="text" id="regCargo" placeholder="Ex: Inspetor de Manutenção - GE U20">
 
-                <label style="font-size:10px; font-family:'JetBrains Mono'; color:var(--text-muted); font-weight:700;">SENHA DE ACESSO</label>
-                <input type="password" id="regSenha" placeholder="Defina a sua senha operacional">
+                <label style="font-size:10px; font-family:'JetBrains Mono'; color:var(--text-muted); font-weight:700;">SENHA DE ACESSO (MÍNIMO 6 CARACTERES)</label>
+                <input type="password" id="regSenha" placeholder="Defina a sua senha operacional" minlength="6">
 
-                <button onclick="window.submeterNovoCadastro()" class="btn-action" style="margin-top:8px;">ENVIAR CÓDIGO DE CONFIRMAÇÃO</button>
-            </div>
-
-            <!-- ETAPA DE CONFIRMAÇÃO DE E-MAIL COM PIN -->
-            <div id="boxFormVerificaEmail" style="display: none;">
-                <div style="font-size: 12px; color: var(--accent-gold); margin-bottom: 12px; font-family: 'JetBrains Mono';">
-                    DIGITE O CÓDIGO DE 6 DÍGITOS ENVIADO PARA O SEU E-MAIL
-                </div>
-                <input type="text" id="regPinDigitado" placeholder="000000" maxlength="6" style="text-align:center; font-size: 20px; letter-spacing: 6px;">
-                <button onclick="window.validarPinEmail()" class="btn-action">CONFIRMAR E VALIDAR E-MAIL</button>
-                <button type="button" onclick="window.alternarAbaAuth('CADASTRO')" style="background:transparent; border:none; color:var(--text-muted); font-size:11px; margin-top:10px; cursor:pointer;">Corrigir dados do registo</button>
+                <button onclick="window.submeterNovoCadastro()" class="btn-action" style="margin-top:8px;" id="btnEnviarCadastro">CRIAR CONTA E ENVIAR E-MAIL</button>
             </div>
         </div>
     </div>
@@ -989,9 +970,7 @@
             <div class="modal-title-pro">
                 <span>EXCLUIR ATIVO DA BASE</span>
             </div>
-            <div class="modal-desc-pro" id="modalDelAssetSub">
-                Confirmação de exclusão permanente do ativo.
-            </div>
+            <div class="modal-desc-pro" id="modalDelAssetSub">Confirmação de exclusão permanente do ativo.</div>
             <div class="modal-form-group">
                 <label>AUTENTICAÇÃO DO INSPETOR (SENHA)</label>
                 <input type="password" id="modalDelAssetPass" placeholder="Senha Operacional" style="margin-bottom:0;">
@@ -1011,10 +990,21 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, push, update, onValue, remove, get, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    const firebaseConfig = { apiKey: "AIzaSyArTUjStVg-JrYZq0xNgh59w_aYZmWq7Y8", authDomain: "mathfrotage.firebaseapp.com", databaseURL: "https://mathfrotage-default-rtdb.firebaseio.com", projectId: "mathfrotage", storageBucket: "mathfrotage.firebasestorage.app", messagingSenderId: "148867753477", appId: "1:148867753477:web:9048ce8ed2b1ffbb651e6c" };
+    const firebaseConfig = { 
+        apiKey: "AIzaSyArTUjStVg-JrYZq0xNgh59w_aYZmWq7Y8", 
+        authDomain: "mathfrotage.firebaseapp.com", 
+        databaseURL: "https://mathfrotage-default-rtdb.firebaseio.com", 
+        projectId: "mathfrotage", 
+        storageBucket: "mathfrotage.firebasestorage.app", 
+        messagingSenderId: "148867753477", 
+        appId: "1:148867753477:web:9048ce8ed2b1ffbb651e6c" 
+    };
+
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const auth = getAuth(app);
 
     const USER_ADMIN = "MATHEUS";
     const SENHA_MESTRA = "COELHO456";
@@ -1035,126 +1025,111 @@
     let slideGraficoFluidoAtual = 1;
     let modoFocoFluido = "PADRAO";
 
-    let cadastroPendenteTemp = null;
-
     const urlParams = new URLSearchParams(window.location.search);
     const tokenAcesso = urlParams.get('token');
     const mesesNomesAbrev = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-    /* CONTROLO DE ABAS NA TELA DE LOGIN */
+    /* CONTROLE DE ABAS NA TELA DE LOGIN */
     window.alternarAbaAuth = (aba) => {
         const btnL = document.getElementById("btnTabLogin");
         const btnC = document.getElementById("btnTabCadastro");
         const boxL = document.getElementById("boxFormLogin");
         const boxC = document.getElementById("boxFormCadastro");
-        const boxP = document.getElementById("boxFormVerificaEmail");
 
         if (aba === 'LOGIN') {
             btnL.classList.add("active");
             btnC.classList.remove("active");
             boxL.style.display = "block";
             boxC.style.display = "none";
-            boxP.style.display = "none";
         } else if (aba === 'CADASTRO') {
             btnC.classList.add("active");
             btnL.classList.remove("active");
             boxC.style.display = "block";
             boxL.style.display = "none";
-            boxP.style.display = "none";
         }
     };
 
-    /* SUBMETER NOVO CADASTRO E DISPARAR PIN */
+    /* SUBMETER NOVO CADASTRO COM ENVIO REAL DE E-MAIL DO GOOGLE */
     window.submeterNovoCadastro = async () => {
         const nome = document.getElementById("regNome").value.trim();
         const userId = document.getElementById("regUserId").value.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
         const email = document.getElementById("regEmail").value.trim().toLowerCase();
         const cargo = document.getElementById("regCargo").value.trim();
         const senha = document.getElementById("regSenha").value;
+        const btn = document.getElementById("btnEnviarCadastro");
 
         if (!nome || !userId || !email || !cargo || !senha) {
             return alert("Por favor, preencha todos os campos do formulário.");
+        }
+
+        if (senha.length < 6) {
+            return alert("A senha deve conter no mínimo 6 caracteres.");
         }
 
         if (userId === USER_ADMIN.toLowerCase()) {
             return alert("Este identificador é reservado para a administração mestre.");
         }
 
-        try {
-            // Verificar se o ID já existe
-            const snap = await get(ref(db, `usuarios/${userId}`));
-            if (snap.exists()) {
-                return alert("Este ID / Matrícula já está em utilização. Escolha outro.");
-            }
-
-            // Gerar PIN de 6 dígitos
-            const pinGerado = Math.floor(100000 + Math.random() * 900000).toString();
-
-            cadastroPendenteTemp = {
-                nome,
-                userId,
-                email,
-                cargo,
-                senha,
-                pin: pinGerado,
-                dataCadastro: new Date().toISOString()
-            };
-
-            // Registo provisório no Firebase aguardando validação
-            await set(ref(db, `solicitacoes_pendentes/${userId}`), cadastroPendenteTemp);
-
-            // Exibir ecrã de inserção de PIN
-            document.getElementById("boxFormCadastro").style.display = "none";
-            document.getElementById("boxFormVerificaEmail").style.display = "block";
-
-            // Envio simulado/alerta informativo com PIN para teste imediato
-            alert(`[CONFIRMAÇÃO DE E-MAIL]\nFoi enviado um código de validação para: ${email}\n\nCódigo de verificação para teste: ${pinGerado}`);
-
-        } catch (err) {
-            alert("Erro ao registar solicitação: " + err.message);
-        }
-    };
-
-    /* VALIDAR PIN DO E-MAIL */
-    window.validarPinEmail = async () => {
-        const pinInput = document.getElementById("regPinDigitado").value.trim();
-        if (!cadastroPendenteTemp) return alert("Sessão expirada. Preencha o formulário novamente.");
-
-        if (pinInput !== cadastroPendenteTemp.pin) {
-            return alert("Código PIN incorreto. Verifique o seu e-mail e tente novamente.");
-        }
+        btn.disabled = true;
+        btn.innerText = "Enviando e-mail de confirmação...";
 
         try {
-            // Gravar utilizador no nó principal de usuários com status PENDENTE_APROVACAO
-            const dadosUsuario = {
-                nome: cadastroPendenteTemp.nome,
-                email: cadastroPendenteTemp.email,
-                cargo: cadastroPendenteTemp.cargo,
-                senha: cadastroPendenteTemp.senha,
-                status: "PENDENTE_APROVACAO",
-                emailConfirmado: true,
-                dataCriacao: new Date().toISOString()
-            };
+            // 1. Cria conta no Firebase Authentication
+            const cred = await createUserWithEmailAndPassword(auth, email, senha);
+            const user = cred.user;
 
-            await set(ref(db, `usuarios/${cadastroPendenteTemp.userId}`), dadosUsuario);
-            await remove(ref(db, `solicitacoes_pendentes/${cadastroPendenteTemp.userId}`));
+            // 2. Dispara o e-mail oficial com o link de confirmação do Google
+            await sendEmailVerification(user);
 
-            alert("✅ E-mail confirmado com sucesso!\nO seu registo foi encaminhado para o administrador MATHEUS para aprovação técnica.");
-            cadastroPendenteTemp = null;
-            document.getElementById("regPinDigitado").value = "";
+            // 3. Registra os dados no Realtime Database com status PENDENTE
+            await set(ref(db, `usuarios/${user.uid}`), {
+                uid: user.uid,
+                userId: userId,
+                nome: nome,
+                email: email,
+                cargo: cargo,
+                status: "PENDENTE",
+                dataSolicitacao: new Date().toISOString()
+            });
+
+            // 4. Também mantém a indexação por ID
+            await set(ref(db, `usuarios_por_id/${userId}`), {
+                uid: user.uid,
+                email: email
+            });
+
+            // Desconecta temporariamente até o usuário verificar o e-mail
+            await signOut(auth);
+
+            alert(`✅ E-mail de confirmação enviado com sucesso para ${email}!\n\n1. Abra a sua caixa de entrada (ou pasta de spam).\n2. Clique no link oficial para confirmar o e-mail.\n3. Após a confirmação, o Administrador MATHEUS liberará seu acesso.`);
+
+            document.getElementById("regNome").value = "";
+            document.getElementById("regUserId").value = "";
+            document.getElementById("regEmail").value = "";
+            document.getElementById("regCargo").value = "";
+            document.getElementById("regSenha").value = "";
             window.alternarAbaAuth('LOGIN');
 
         } catch (err) {
-            alert("Erro ao validar registo: " + err.message);
+            if (err.code === "auth/email-already-in-use") {
+                alert("Este e-mail já está cadastrado no sistema.");
+            } else if (err.code === "auth/invalid-email") {
+                alert("Endereço de e-mail inválido.");
+            } else {
+                alert("Erro ao realizar cadastro: " + err.message);
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "CRIAR CONTA E ENVIAR E-MAIL";
         }
     };
 
-    /* CONTROLE GLOBAL DE LOGIN */
+    /* CONTROLE GLOBAL DE LOGIN COM SUPORTE A EMAIL E SENHA MESTRA */
     window.executarLogin = async () => {
-        const u = document.getElementById("loginUser").value.trim().toLowerCase();
+        const u = document.getElementById("loginUser").value.trim();
         const p = document.getElementById("loginPass").value;
 
-        if (!u || !p) return alert("Preencha o utilizador e a senha.");
+        if (!u || !p) return alert("Preencha o usuário/e-mail e a senha.");
 
         // 1. Chave mestra de emergência
         if (u.toUpperCase() === USER_ADMIN && p === SENHA_MESTRA) {
@@ -1164,38 +1139,59 @@
             return;
         }
 
-        // 2. Consulta ao Realtime Database
         try {
-            const snap = await get(ref(db, `usuarios/${u}`));
-            if (!snap.exists()) {
-                return alert("Acesso negado. Utilizador não cadastrado.");
+            let emailLogin = u;
+
+            // Se digitou o ID em vez de e-mail, busca o e-mail cadastrado
+            if (!u.includes("@")) {
+                const snapId = await get(ref(db, `usuarios_por_id/${u.toLowerCase()}`));
+                if (!snapId.exists()) {
+                    return alert("Usuário não localizado no sistema.");
+                }
+                emailLogin = snapId.val().email;
             }
 
-            const dados = snap.val();
+            // Realiza autenticação via Firebase Auth
+            const userCred = await signInWithEmailAndPassword(auth, emailLogin, p);
+            const user = userCred.user;
 
-            if (dados.senha !== p) {
-                return alert("Acesso negado. Senha incorreta.");
+            // 2. Valida se o e-mail foi confirmado pelo link
+            if (!user.emailVerified) {
+                await signOut(auth);
+                return alert("⚠️ E-mail não confirmado!\nAbra sua caixa de entrada e clique no link de ativação enviado pelo Google.");
             }
 
-            if (dados.status === "PENDENTE_APROVACAO") {
-                return alert("⏳ Registo em análise.\nO seu e-mail foi validado, mas o acesso ainda aguarda aprovação do administrador.");
+            // 3. Valida aprovação do Administrador no Realtime Database
+            const snapUser = await get(ref(db, `usuarios/${user.uid}`));
+            if (!snapUser.exists()) {
+                await signOut(auth);
+                return alert("Perfil de usuário não localizado no banco de dados.");
             }
 
-            if (dados.status === "BLOQUEADO") {
-                return alert("⛔ Acesso suspenso ou bloqueado pela administração.");
+            const dados = snapUser.val();
+
+            if (dados.status === "PENDENTE") {
+                await signOut(auth);
+                return alert("⏳ E-mail verificado com sucesso!\nO seu cadastro aguarda a aprovação técnica do Administrador MATHEUS.");
             }
 
-            if (dados.status === "APROVADO" || !dados.status) {
-                localStorage.setItem("fluidos_session", u);
-                localStorage.setItem("fluidos_role", dados.role || "INSPETOR");
-                inicializarAplicacao();
-                return;
+            if (dados.status === "BLOQUEADO" || dados.status === "REJEITADO") {
+                await signOut(auth);
+                return alert("⛔ Acesso não autorizado ou bloqueado pela administração.");
             }
 
-            alert("Estado de conta não autorizado.");
+            // Acesso liberado
+            localStorage.setItem("fluidos_session", dados.nome || user.email);
+            localStorage.setItem("fluidos_uid", user.uid);
+            localStorage.setItem("fluidos_role", dados.role || "INSPETOR");
+            inicializarAplicacao();
 
         } catch (err) {
-            alert("Erro ao validar acesso no banco: " + err.message);
+            if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+                alert("Acesso negado: E-mail ou senha incorretos.");
+            } else {
+                alert("Erro ao efetuar login: " + err.message);
+            }
         }
     };
 
@@ -1219,32 +1215,32 @@
         try {
             const snap = await get(ref(db, 'usuarios'));
             if (!snap.exists()) {
-                container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted); font-size:11px;">Nenhum utilizador encontrado na base.</div>`;
+                container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted); font-size:11px;">Nenhum usuário cadastrado até o momento.</div>`;
                 return;
             }
 
             let html = "";
             snap.forEach(child => {
-                const id = child.key;
+                const uid = child.key;
                 const u = child.val();
                 const status = u.status || "APROVADO";
 
                 let statusBadge = "";
-                if (status === "APROVADO") statusBadge = `<span style="color:var(--accent-green); font-size:10px; font-weight:800;">APROVADO</span>`;
-                else if (status === "PENDENTE_APROVACAO") statusBadge = `<span style="color:var(--accent-gold); font-size:10px; font-weight:800;">AGUARDA APROVAÇÃO</span>`;
+                if (status === "APROVADO") statusBadge = `<span style="color:var(--accent-green); font-size:10px; font-weight:800;">LIBERADO</span>`;
+                else if (status === "PENDENTE") statusBadge = `<span style="color:var(--accent-gold); font-size:10px; font-weight:800;">AGUARDA APROVAÇÃO</span>`;
                 else statusBadge = `<span style="color:var(--accent-red); font-size:10px; font-weight:800;">BLOQUEADO</span>`;
 
                 html += `
                     <div class="user-manage-card">
                         <div style="flex:1;">
-                            <div style="font-weight:800; font-size:12px; color:var(--text-main);">${u.nome || id} <span style="font-size:10.5px; color:var(--text-muted);">(@${id})</span></div>
-                            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${u.email || 'Sem e-mail'} | ${u.cargo || 'Operação'}</div>
+                            <div style="font-weight:800; font-size:12px; color:var(--text-main);">${u.nome || uid} <span style="font-size:10.5px; color:var(--text-muted);">(@${u.userId || 'id'})</span></div>
+                            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${u.email || 'Sem e-mail'} | ${u.cargo || 'Oficina'}</div>
                             <div style="font-size:10px; margin-top:3px;">Status: ${statusBadge}</div>
                         </div>
                         <div style="display:flex; gap:6px;">
-                            ${status !== 'APROVADO' ? `<button onclick="window.atualizarStatusUsuario('${id}', 'APROVADO')" class="btn-acao-inline" style="color:var(--accent-green); border-color:var(--accent-green);">APROVAR</button>` : ''}
-                            ${status !== 'BLOQUEADO' ? `<button onclick="window.atualizarStatusUsuario('${id}', 'BLOQUEADO')" class="btn-acao-inline" style="color:var(--accent-gold); border-color:var(--accent-gold);">SUSPENDER</button>` : ''}
-                            <button onclick="window.eliminarUsuarioBase('${id}')" class="btn-acao-inline" style="color:var(--accent-red); border-color:var(--accent-red);">EXCLUIR</button>
+                            ${status !== 'APROVADO' ? `<button onclick="window.atualizarStatusUsuario('${uid}', 'APROVADO')" class="btn-acao-inline" style="color:var(--accent-green); border-color:var(--accent-green);">APROVAR</button>` : ''}
+                            ${status !== 'BLOQUEADO' ? `<button onclick="window.atualizarStatusUsuario('${uid}', 'BLOQUEADO')" class="btn-acao-inline" style="color:var(--accent-gold); border-color:var(--accent-gold);">BLOQUEAR</button>` : ''}
+                            <button onclick="window.eliminarUsuarioBase('${uid}', '${u.userId || ''}')" class="btn-acao-inline" style="color:var(--accent-red); border-color:var(--accent-red);">EXCLUIR</button>
                         </div>
                     </div>`;
             });
@@ -1256,27 +1252,30 @@
         }
     };
 
-    window.atualizarStatusUsuario = async (userId, novoStatus) => {
+    window.atualizarStatusUsuario = async (uid, novoStatus) => {
         try {
-            await update(ref(db, `usuarios/${userId}`), { status: novoStatus });
+            await update(ref(db, `usuarios/${uid}`), { status: novoStatus, dataAprovacao: new Date().toISOString() });
             carregarListaModerarUsuarios();
         } catch (err) {
             alert("Erro ao atualizar status: " + err.message);
         }
     };
 
-    window.eliminarUsuarioBase = async (userId) => {
-        if (!confirm(`Tem a certeza que deseja eliminar permanentemente o utilizador @${userId}?`)) return;
+    window.eliminarUsuarioBase = async (uid, userId) => {
+        if (!confirm(`Deseja remover permanentemente o registro deste usuário?`)) return;
         try {
-            await remove(ref(db, `usuarios/${userId}`));
+            await remove(ref(db, `usuarios/${uid}`));
+            if (userId) await remove(ref(db, `usuarios_por_id/${userId}`));
             carregarListaModerarUsuarios();
         } catch (err) {
-            alert("Erro ao eliminar utilizador: " + err.message);
+            alert("Erro ao eliminar usuário: " + err.message);
         }
     };
 
-    window.executarLogout = () => {
+    window.executarLogout = async () => {
+        try { await signOut(auth); } catch(e) {}
         localStorage.removeItem("fluidos_session");
+        localStorage.removeItem("fluidos_uid");
         localStorage.removeItem("fluidos_role");
         location.reload();
     };
@@ -1361,11 +1360,11 @@
 
     const validarCredencialOperacional = async (senhaDigitada) => {
         if (senhaDigitada === SENHA_MESTRA) return true;
-        const usuarioLogado = localStorage.getItem("fluidos_session");
-        if (usuarioLogado) {
+        const uidLogado = localStorage.getItem("fluidos_uid");
+        if (uidLogado) {
             try {
-                const snap = await get(ref(db, `usuarios/${usuarioLogado.toLowerCase()}`));
-                if (snap.exists() && snap.val().senha === senhaDigitada) return true;
+                const snap = await get(ref(db, `usuarios/${uidLogado}`));
+                if (snap.exists()) return true;
             } catch(e) {}
         }
         return false;
@@ -1574,7 +1573,7 @@
         }
     };
 
-    /* COMPARTILHAMENTO TEMPORÁRIO CORRIGIDO PARA O GITHUB PAGES */
+    /* COMPARTILHAMENTO TEMPORÁRIO */
     window.abrirModalCompartilhamentoFluido = () => {
         const pass = document.getElementById("modalSharePass");
         if (pass) pass.value = "";
@@ -1602,7 +1601,6 @@
             await update(ref(db, `chaves/${tokenId}`), { expira: tempoExpiracao });
             window.fecharModalCompartilhamentoFluido();
 
-            // Resolução do endereço do repositório no GitHub Pages
             const caminhoBase = window.location.href.split('?')[0];
             const urlAcesso = `${caminhoBase}?token=${tokenId}`;
             const msgTexto = `M.A.T.H. | FLUIDOS & INTEGRIDADE DE LUBRIFICANTES\nPainel técnico liberado para acompanhamento operacional.\nValidade: ${horasVal} Horas.\nLink: ${urlAcesso}`;
@@ -1621,7 +1619,7 @@
             const urlWhatsApp = `https://api.whatsapp.com/send?text=${encodeURIComponent(msgTexto)}`;
             window.open(urlWhatsApp, '_blank');
         } catch (err) {
-            alert("Erro ao emitir chave segura: " + err.message);
+            alert("Erro ao emitir chave: " + err.message);
         }
     };
 
@@ -1656,7 +1654,7 @@
 
         doc.setFontSize(9.5);
         doc.setFont("helvetica", "normal");
-        doc.text(`Emissão: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} | Base Operacional: Frota GE U20-C`, 14, 21);
+        doc.text(`Emissão: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} | Base: Frota GE U20-C`, 14, 21);
 
         const rows = [];
         const ordenados = [...todosLaudos].sort((a, b) => parseDataSegura(b.dataColeta) - parseDataSegura(a.dataColeta));
@@ -1858,9 +1856,7 @@
             if (estaConcluido || l.dataConclusao || l.atividadesCorretivas) {
                 blocoLiberacaoHtml = `
                     <div class="box-liberacao-tecnica">
-                        <div class="box-liberacao-header">
-                            <span>LIBERAÇÃO TÉCNICA / ATIVIDADES DA OFICINA</span>
-                        </div>
+                        <div class="box-liberacao-header"><span>LIBERAÇÃO TÉCNICA / ATIVIDADES DA OFICINA</span></div>
                         <div class="box-liberacao-item"><b>DATA LIBERAÇÃO:</b> ${formatarData(l.dataConclusao)}</div>
                         <div class="box-liberacao-item"><b>AÇÕES EXECUTADAS:</b> ${l.atividadesCorretivas || 'Manutenção executada conforme plano de ação da oficina.'}</div>
                     </div>`;
@@ -1929,9 +1925,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: true, position: 'top', labels: { color: corTexto, font: { family: 'JetBrains Mono', size: 10, weight: 'bold' }, boxWidth: 12, padding: 12 } }
-                    },
+                    plugins: { legend: { display: true, position: 'top', labels: { color: corTexto, font: { family: 'JetBrains Mono', size: 10, weight: 'bold' }, boxWidth: 12, padding: 12 } } },
                     scales: {
                         x: { stacked: true, grid: { color: corGrid }, ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10, weight: 'bold' } } },
                         y: { stacked: true, grid: { color: corGrid }, ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10, weight: 'bold' }, stepSize: 1 }, beginAtZero: true }
@@ -2294,10 +2288,9 @@
         const badgeUser = document.getElementById("badgeCurrentUser");
         if (badgeUser) badgeUser.innerText = `${usuarioSessao.toUpperCase()} [${roleSessao}]`;
 
-        // Ativa o botão de Gestão de Usuários caso seja o administrador mestre
         const btnAdminUsers = document.getElementById("btnAdminGestaoUsers");
         if (btnAdminUsers) {
-            btnAdminUsers.style.display = (usuarioSessao.toLowerCase() === "matheus") ? "inline-flex" : "none";
+            btnAdminUsers.style.display = (usuarioSessao.toLowerCase().includes("matheus")) ? "inline-flex" : "none";
         }
 
         if (localStorage.getItem("visao_theme") === "light") {
