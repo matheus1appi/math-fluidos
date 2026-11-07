@@ -9,6 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <!-- EmailJS SDK para envio de confirmações por e-mail -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
     <style>
         :root {
@@ -58,19 +60,22 @@
         * { box-sizing: border-box; }
         body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); padding-bottom: 40px; -webkit-tap-highlight-color: transparent; transition: background 0.25s, color 0.25s; overflow-x: hidden; }
 
-        /* TELA DE LOGIN */
-        .login-screen { display: flex; min-height: 100vh; align-items: center; justify-content: center; background: radial-gradient(circle at center, #111726 0%, #000000 100%); padding: 20px; position: fixed; inset: 0; z-index: 9999; }
-        .login-card { background: var(--card-gradient); border: 1px solid var(--card-border); border-radius: 14px; max-width: 420px; width: 100%; padding: 45px 35px; text-align: center; box-shadow: var(--shadow-card); }
+        /* TELA DE AUTENTICAÇÃO E CADASTRO */
+        .login-screen { display: flex; min-height: 100vh; align-items: center; justify-content: center; background: radial-gradient(circle at center, #111726 0%, #000000 100%); padding: 20px; position: fixed; inset: 0; z-index: 9999; overflow-y: auto; }
+        .login-card { background: var(--card-gradient); border: 1px solid var(--card-border); border-radius: 14px; max-width: 440px; width: 100%; padding: 35px 30px; text-align: center; box-shadow: var(--shadow-card); position: relative; }
         .login-card h2 { font-family: 'JetBrains Mono'; font-size: 26px; font-weight: 800; letter-spacing: 4px; margin: 0 0 4px 0; color: var(--text-main); }
-        .login-card p { font-size: 11px; color: var(--text-muted); margin: 0 0 30px 0; text-transform: uppercase; letter-spacing: 1px; }
+        .login-card p { font-size: 11px; color: var(--text-muted); margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 1px; }
+
+        .auth-switch-tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; }
+        .auth-tab-btn { flex: 1; background: transparent; border: 1px solid var(--card-border); color: var(--text-muted); font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 700; padding: 10px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .auth-tab-btn.active { background: rgba(245, 158, 11, 0.15); border-color: var(--accent-gold); color: var(--accent-gold); }
 
         /* HEADER */
         .top-header { background: var(--card-gradient); border-bottom: 1px solid var(--card-border); padding: 14px 24px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(8px); }
-        .header-left { font-family: 'JetBrains Mono'; font-size: 11px; color: var(--text-muted); font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+        .header-left { font-family: 'JetBrains Mono'; font-size: 11px; color: var(--text-muted); font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
         
         .header-center { text-align: center; height: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .fade-text { transition: opacity 0.5s ease-in-out; opacity: 1; }
-        .fade-out { opacity: 0; }
         .header-center h1 { margin: 0; font-size: clamp(17px, 2.5vw, 21px); font-weight: 800; font-family: 'JetBrains Mono'; letter-spacing: 3px; color: var(--accent-gold); }
         .header-center p { margin: 2px 0 0 0; font-size: clamp(9px, 1.5vw, 10px); color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
         
@@ -78,6 +83,7 @@
         .btn-nav { background: var(--iron); color: var(--text-main); border: 1px solid var(--card-border); padding: 8px 14px; border-radius: 6px; font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 800; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
         .btn-nav:hover { border-color: var(--card-border-hover); transform: translateY(-1px); }
         .btn-nav.share { background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0.05) 100%); border-color: var(--accent-gold); color: var(--accent-gold); }
+        .btn-nav.admin-guard { background: rgba(2, 132, 199, 0.15); border-color: var(--accent-blue); color: #38bdf8; }
 
         .container { max-width: 1600px; margin: 20px auto; padding: 0 24px; width: 100%; box-sizing: border-box; }
 
@@ -254,7 +260,7 @@
             box-shadow: 0 0 25px rgba(245, 158, 11, 0.2), var(--shadow-card);
         }
 
-        /* GRID PRINCIPAL ESTÁVEL */
+        /* GRID PRINCIPAL */
         .detail-split-grid { 
             display: grid; 
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); 
@@ -515,7 +521,7 @@
         /* MODAIS */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 2200; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.active { display: flex; }
-        .modal-card-pro { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; max-width: 440px; width: 100%; padding: 26px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); position: relative; }
+        .modal-card-pro { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; max-width: 580px; width: 100%; padding: 26px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); position: relative; max-height: 90vh; overflow-y: auto; }
         .modal-title-pro { font-family: 'JetBrains Mono'; font-size: 15px; font-weight: 800; color: var(--accent-gold); margin-bottom: 4px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
         .modal-desc-pro { font-size: 11px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.4; }
         .modal-form-group { margin-bottom: 14px; text-align: left; }
@@ -525,20 +531,18 @@
         .btn-modal-confirm { background: var(--accent-gold); color: #000; border: none; padding: 12px; border-radius: 6px; font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 800; cursor: pointer; flex: 2; transition: 0.2s; }
         .btn-modal-confirm:hover { opacity: 0.95; transform: translateY(-1px); }
 
+        .user-manage-card { background: var(--row-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; font-family: 'JetBrains Mono'; }
+
         .lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .lightbox img { max-width: 90%; max-height: 85%; border: 2px solid var(--card-border-hover); border-radius: 10px; }
 
         @media (max-width: 1180px) {
             .top-status-grid { grid-template-columns: 1fr; }
             .detail-split-grid { grid-template-columns: 1fr !important; }
-            .detail-split-grid.foco-laudos .right-chart-panel,
-            .detail-split-grid.foco-graficos .left-timeline-panel {
-                display: block !important;
-            }
         }
         @media (max-width: 768px) {
             .top-header { grid-template-columns: 1fr; text-align: center; padding: 12px 15px; }
-            .header-left { text-align: center; }
+            .header-left { justify-content: center; }
             .header-right { justify-content: center; margin-top: 4px; }
             .system-tabs { flex-direction: column; gap: 8px; }
             .form-grid-layout { grid-template-columns: 1fr; }
@@ -547,21 +551,63 @@
 </head>
 <body class="page-header-fixed page-sidebar-closed-hide-logo page-container-bg-solid" locale="pt-BR" datepickerformatodata="dd/mm/yyyy" inputmaskformatodata="d/m/y">
 
-    <!-- TELA DE LOGIN -->
+    <!-- TELA DE AUTENTICAÇÃO E REGISTO MODERNO -->
     <div class="login-screen" id="telaLogin">
         <div class="login-card">
             <h2>M.A.T.H.</h2>
-            <p>Rail-Drawer Hub | Acesso Restrito</p>
-            <input type="text" id="loginUser" placeholder="ID do Inspetor / Usuário" autocomplete="off">
-            <input type="password" id="loginPass" placeholder="Senha Operacional">
-            <button onclick="window.executarLogin()" class="btn-action" style="margin-top:8px;">AUTENTICAR NO SISTEMA</button>
+            <p>Rail-Drawer Hub | Controlo de Acesso</p>
+            
+            <div class="auth-switch-tabs">
+                <button type="button" class="auth-tab-btn active" id="btnTabLogin" onclick="window.alternarAbaAuth('LOGIN')">ENTRAR</button>
+                <button type="button" class="auth-tab-btn" id="btnTabCadastro" onclick="window.alternarAbaAuth('CADASTRO')">SOLICITAR ACESSO</button>
+            </div>
+
+            <!-- FORMULÁRIO DE LOGIN -->
+            <div id="boxFormLogin">
+                <input type="text" id="loginUser" placeholder="ID do Inspetor / Utilizador" autocomplete="off">
+                <input type="password" id="loginPass" placeholder="Senha Operacional">
+                <button onclick="window.executarLogin()" class="btn-action" style="margin-top:8px;">AUTENTICAR NO SISTEMA</button>
+            </div>
+
+            <!-- FORMULÁRIO DE CADASTRO -->
+            <div id="boxFormCadastro" style="display: none; text-align: left;">
+                <label style="font-size:10px; font-family:'JetBrains Mono'; color:var(--text-muted); font-weight:700;">NOME COMPLETO</label>
+                <input type="text" id="regNome" placeholder="Ex: Carlos Eduardo Silva">
+
+                <label style="font-size:10px; font-family:'JetBrains Mono'; color:var(--text-muted); font-weight:700;">ID / MATRÍCULA OPERACIONAL</label>
+                <input type="text" id="regUserId" placeholder="Ex: carlos.silva">
+
+                <label style="font-size:10px; font-family:'JetBrains Mono'; color:var(--text-muted); font-weight:700;">E-MAIL CORPORATIVO / PESSOAL</label>
+                <input type="email" id="regEmail" placeholder="seu.email@empresa.com">
+
+                <label style="font-size:10px; font-family:'JetBrains Mono'; color:var(--text-muted); font-weight:700;">OFICINA / CARGO TÉCNICO</label>
+                <input type="text" id="regCargo" placeholder="Ex: Inspetor de Manutenção - GE U20">
+
+                <label style="font-size:10px; font-family:'JetBrains Mono'; color:var(--text-muted); font-weight:700;">SENHA DE ACESSO</label>
+                <input type="password" id="regSenha" placeholder="Defina a sua senha operacional">
+
+                <button onclick="window.submeterNovoCadastro()" class="btn-action" style="margin-top:8px;">ENVIAR CÓDIGO DE CONFIRMAÇÃO</button>
+            </div>
+
+            <!-- ETAPA DE CONFIRMAÇÃO DE E-MAIL COM PIN -->
+            <div id="boxFormVerificaEmail" style="display: none;">
+                <div style="font-size: 12px; color: var(--accent-gold); margin-bottom: 12px; font-family: 'JetBrains Mono';">
+                    DIGITE O CÓDIGO DE 6 DÍGITOS ENVIADO PARA O SEU E-MAIL
+                </div>
+                <input type="text" id="regPinDigitado" placeholder="000000" maxlength="6" style="text-align:center; font-size: 20px; letter-spacing: 6px;">
+                <button onclick="window.validarPinEmail()" class="btn-action">CONFIRMAR E VALIDAR E-MAIL</button>
+                <button type="button" onclick="window.alternarAbaAuth('CADASTRO')" style="background:transparent; border:none; color:var(--text-muted); font-size:11px; margin-top:10px; cursor:pointer;">Corrigir dados do registo</button>
+            </div>
         </div>
     </div>
 
     <!-- APLICAÇÃO PRINCIPAL -->
     <div id="painelPrincipal" style="display: none;">
         <header class="top-header">
-            <div class="header-left">MATHEUS G COELHO</div>
+            <div class="header-left">
+                <span>MATHEUS G COELHO</span>
+                <span id="badgeCurrentUser" style="font-size:9.5px; background:rgba(245,158,11,0.15); color:var(--accent-gold); padding:2px 8px; border-radius:4px; border:1px solid var(--accent-gold);"></span>
+            </div>
             
             <div class="header-center">
                 <div id="carouselHeaderContainer" class="fade-text">
@@ -571,6 +617,7 @@
             </div>
             
             <div class="header-right">
+                <button class="btn-nav admin-guard" id="btnAdminGestaoUsers" onclick="window.abrirModalGestaoUsuarios()" style="display:none;">🛡️ GESTÃO DE ACESSOS</button>
                 <button class="btn-nav share" id="btnCompartilhar" onclick="window.abrirModalCompartilhamentoFluido()">COMPARTILHAR</button>
                 <button class="btn-nav" onclick="window.alternarTema()">TEMA</button>
                 <button id="btnLogout" onclick="window.executarLogout()" style="background: rgba(244,63,94,0.15); color: var(--accent-red); border: 1px solid var(--accent-red); padding: 7px 11px; border-radius: 4px; font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 800; cursor: pointer;">[X] SAIR</button>
@@ -579,7 +626,7 @@
 
         <div class="container page-container">
 
-            <!-- 1. FAIXA SUPERIOR: CARD DE PANORAMA + BANNER DO ATIVO ALINHADOS -->
+            <!-- FAIXA SUPERIOR: KPI + BANNER -->
             <div class="top-status-grid">
                 
                 <div class="kpi-square-box">
@@ -638,7 +685,7 @@
 
             </div>
 
-            <!-- 2. ABAS DE SUBSISTEMA -->
+            <!-- ABAS DE SUBSISTEMA -->
             <div class="system-tabs">
                 <button class="sys-tab-btn active" id="tabMotor" onclick="window.alternarSistema('MOTOR_DIESEL')">
                     SAÚDE DO MOTOR DIESEL (GE 7FDL12)
@@ -648,7 +695,7 @@
                 </button>
             </div>
 
-            <!-- 3. DETALHAMENTO: HISTÓRICO COM ROLAGEM + CARD MESTRE DE GRÁFICOS ANALÍTICOS -->
+            <!-- DETALHAMENTO -->
             <div class="detail-split-grid" id="mainDetailSplitGrid" style="margin-bottom: 20px;">
                 
                 <div class="content-box left-timeline-panel" id="panelTimelineContainer">
@@ -713,7 +760,7 @@
 
             </div>
 
-            <!-- 4. PAINEL DE REGISTRO E EDIÇÃO COMPLETA -->
+            <!-- PAINEL DE REGISTRO E EDIÇÃO COMPLETA -->
             <div class="content-box" id="painelAdminCadastro">
                 <div class="content-box-title">
                     <span id="formTitle">REGISTRAR NOVA ANÁLISE</span>
@@ -832,8 +879,28 @@
         </div>
     </div>
 
+    <!-- MODAL DE GESTÃO DE USUÁRIOS E APROVAÇÃO (ADMIN) -->
+    <div class="modal-overlay" id="modalGestaoUsersOverlay">
+        <div class="modal-card-pro modal-dialog">
+            <div class="modal-title-pro">
+                <span>🛡️ GESTÃO DE ACESSOS & SOLICITAÇÕES</span>
+            </div>
+            <div class="modal-desc-pro">
+                Moderação de novos utilizadores com confirmação por e-mail e concessão de acesso operacional.
+            </div>
+
+            <div id="listaUsuariosModerar" style="max-height: 420px; overflow-y: auto; padding-right: 4px;">
+                <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:11px;">Carregando utilizadores...</div>
+            </div>
+
+            <div class="modal-btn-row">
+                <button type="button" class="btn-modal-cancel" onclick="window.fecharModalGestaoUsuarios()">FECHAR PAINEL</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL DE SENHA PARA EMISSAO DE PDF -->
-    <div class="modal-overlay" id="modalPDFFluidoOverlay" data-backdrop="static" data-keyboard="false">
+    <div class="modal-overlay" id="modalPDFFluidoOverlay">
         <div class="modal-card-pro modal-dialog">
             <div class="modal-title-pro">
                 <span>AUTORIZAÇÃO PARA EMISSÃO DE PDF</span>
@@ -855,7 +922,7 @@
     </div>
 
     <!-- MODAL DE COMPARTILHAMENTO PROFISSIONAL -->
-    <div class="modal-overlay" id="modalCompartilharOverlay" data-backdrop="static" data-keyboard="false">
+    <div class="modal-overlay" id="modalCompartilharOverlay">
         <div class="modal-card-pro modal-dialog">
             <div class="modal-title-pro">
                 <span>DIRETRIZ DE COMPARTILHAMENTO TEMPORÁRIO</span>
@@ -917,7 +984,7 @@
     </div>
 
     <!-- MODAL DE SENHA PARA EXCLUIR ATIVO -->
-    <div class="modal-overlay" id="modalDelAsset" data-backdrop="static" data-keyboard="false">
+    <div class="modal-overlay" id="modalDelAsset">
         <div class="modal-card-pro modal-dialog" style="max-width:380px;">
             <div class="modal-title-pro">
                 <span>EXCLUIR ATIVO DA BASE</span>
@@ -943,7 +1010,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, push, update, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getDatabase, ref, push, update, onValue, remove, get, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
     const firebaseConfig = { apiKey: "AIzaSyArTUjStVg-JrYZq0xNgh59w_aYZmWq7Y8", authDomain: "mathfrotage.firebaseapp.com", databaseURL: "https://mathfrotage-default-rtdb.firebaseio.com", projectId: "mathfrotage", storageBucket: "mathfrotage.firebasestorage.app", messagingSenderId: "148867753477", appId: "1:148867753477:web:9048ce8ed2b1ffbb651e6c" };
     const app = initializeApp(firebaseConfig);
@@ -968,31 +1035,266 @@
     let slideGraficoFluidoAtual = 1;
     let modoFocoFluido = "PADRAO";
 
+    let cadastroPendenteTemp = null;
+
     const urlParams = new URLSearchParams(window.location.search);
     const tokenAcesso = urlParams.get('token');
-
     const mesesNomesAbrev = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-    /* MASCARA E TRATAMENTO REGIONAL BRASILEIRO (DD/MM/AAAA) */
+    /* CONTROLO DE ABAS NA TELA DE LOGIN */
+    window.alternarAbaAuth = (aba) => {
+        const btnL = document.getElementById("btnTabLogin");
+        const btnC = document.getElementById("btnTabCadastro");
+        const boxL = document.getElementById("boxFormLogin");
+        const boxC = document.getElementById("boxFormCadastro");
+        const boxP = document.getElementById("boxFormVerificaEmail");
+
+        if (aba === 'LOGIN') {
+            btnL.classList.add("active");
+            btnC.classList.remove("active");
+            boxL.style.display = "block";
+            boxC.style.display = "none";
+            boxP.style.display = "none";
+        } else if (aba === 'CADASTRO') {
+            btnC.classList.add("active");
+            btnL.classList.remove("active");
+            boxC.style.display = "block";
+            boxL.style.display = "none";
+            boxP.style.display = "none";
+        }
+    };
+
+    /* SUBMETER NOVO CADASTRO E DISPARAR PIN */
+    window.submeterNovoCadastro = async () => {
+        const nome = document.getElementById("regNome").value.trim();
+        const userId = document.getElementById("regUserId").value.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+        const email = document.getElementById("regEmail").value.trim().toLowerCase();
+        const cargo = document.getElementById("regCargo").value.trim();
+        const senha = document.getElementById("regSenha").value;
+
+        if (!nome || !userId || !email || !cargo || !senha) {
+            return alert("Por favor, preencha todos os campos do formulário.");
+        }
+
+        if (userId === USER_ADMIN.toLowerCase()) {
+            return alert("Este identificador é reservado para a administração mestre.");
+        }
+
+        try {
+            // Verificar se o ID já existe
+            const snap = await get(ref(db, `usuarios/${userId}`));
+            if (snap.exists()) {
+                return alert("Este ID / Matrícula já está em utilização. Escolha outro.");
+            }
+
+            // Gerar PIN de 6 dígitos
+            const pinGerado = Math.floor(100000 + Math.random() * 900000).toString();
+
+            cadastroPendenteTemp = {
+                nome,
+                userId,
+                email,
+                cargo,
+                senha,
+                pin: pinGerado,
+                dataCadastro: new Date().toISOString()
+            };
+
+            // Registo provisório no Firebase aguardando validação
+            await set(ref(db, `solicitacoes_pendentes/${userId}`), cadastroPendenteTemp);
+
+            // Exibir ecrã de inserção de PIN
+            document.getElementById("boxFormCadastro").style.display = "none";
+            document.getElementById("boxFormVerificaEmail").style.display = "block";
+
+            // Envio simulado/alerta informativo com PIN para teste imediato
+            alert(`[CONFIRMAÇÃO DE E-MAIL]\nFoi enviado um código de validação para: ${email}\n\nCódigo de verificação para teste: ${pinGerado}`);
+
+        } catch (err) {
+            alert("Erro ao registar solicitação: " + err.message);
+        }
+    };
+
+    /* VALIDAR PIN DO E-MAIL */
+    window.validarPinEmail = async () => {
+        const pinInput = document.getElementById("regPinDigitado").value.trim();
+        if (!cadastroPendenteTemp) return alert("Sessão expirada. Preencha o formulário novamente.");
+
+        if (pinInput !== cadastroPendenteTemp.pin) {
+            return alert("Código PIN incorreto. Verifique o seu e-mail e tente novamente.");
+        }
+
+        try {
+            // Gravar utilizador no nó principal de usuários com status PENDENTE_APROVACAO
+            const dadosUsuario = {
+                nome: cadastroPendenteTemp.nome,
+                email: cadastroPendenteTemp.email,
+                cargo: cadastroPendenteTemp.cargo,
+                senha: cadastroPendenteTemp.senha,
+                status: "PENDENTE_APROVACAO",
+                emailConfirmado: true,
+                dataCriacao: new Date().toISOString()
+            };
+
+            await set(ref(db, `usuarios/${cadastroPendenteTemp.userId}`), dadosUsuario);
+            await remove(ref(db, `solicitacoes_pendentes/${cadastroPendenteTemp.userId}`));
+
+            alert("✅ E-mail confirmado com sucesso!\nO seu registo foi encaminhado para o administrador MATHEUS para aprovação técnica.");
+            cadastroPendenteTemp = null;
+            document.getElementById("regPinDigitado").value = "";
+            window.alternarAbaAuth('LOGIN');
+
+        } catch (err) {
+            alert("Erro ao validar registo: " + err.message);
+        }
+    };
+
+    /* CONTROLE GLOBAL DE LOGIN */
+    window.executarLogin = async () => {
+        const u = document.getElementById("loginUser").value.trim().toLowerCase();
+        const p = document.getElementById("loginPass").value;
+
+        if (!u || !p) return alert("Preencha o utilizador e a senha.");
+
+        // 1. Chave mestra de emergência
+        if (u.toUpperCase() === USER_ADMIN && p === SENHA_MESTRA) {
+            localStorage.setItem("fluidos_session", "matheus");
+            localStorage.setItem("fluidos_role", "ADMIN");
+            inicializarAplicacao();
+            return;
+        }
+
+        // 2. Consulta ao Realtime Database
+        try {
+            const snap = await get(ref(db, `usuarios/${u}`));
+            if (!snap.exists()) {
+                return alert("Acesso negado. Utilizador não cadastrado.");
+            }
+
+            const dados = snap.val();
+
+            if (dados.senha !== p) {
+                return alert("Acesso negado. Senha incorreta.");
+            }
+
+            if (dados.status === "PENDENTE_APROVACAO") {
+                return alert("⏳ Registo em análise.\nO seu e-mail foi validado, mas o acesso ainda aguarda aprovação do administrador.");
+            }
+
+            if (dados.status === "BLOQUEADO") {
+                return alert("⛔ Acesso suspenso ou bloqueado pela administração.");
+            }
+
+            if (dados.status === "APROVADO" || !dados.status) {
+                localStorage.setItem("fluidos_session", u);
+                localStorage.setItem("fluidos_role", dados.role || "INSPETOR");
+                inicializarAplicacao();
+                return;
+            }
+
+            alert("Estado de conta não autorizado.");
+
+        } catch (err) {
+            alert("Erro ao validar acesso no banco: " + err.message);
+        }
+    };
+
+    /* MODAL DE GESTÃO DE ACESSOS (EXCLUSIVO ADMIN) */
+    window.abrirModalGestaoUsuarios = () => {
+        const overlay = document.getElementById("modalGestaoUsersOverlay");
+        if (overlay) overlay.classList.add("active");
+        carregarListaModerarUsuarios();
+    };
+
+    window.fecharModalGestaoUsuarios = () => {
+        const overlay = document.getElementById("modalGestaoUsersOverlay");
+        if (overlay) overlay.classList.remove("active");
+    };
+
+    const carregarListaModerarUsuarios = async () => {
+        const container = document.getElementById("listaUsuariosModerar");
+        if (!container) return;
+        container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:11px;">Carregando utilizadores...</div>`;
+
+        try {
+            const snap = await get(ref(db, 'usuarios'));
+            if (!snap.exists()) {
+                container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted); font-size:11px;">Nenhum utilizador encontrado na base.</div>`;
+                return;
+            }
+
+            let html = "";
+            snap.forEach(child => {
+                const id = child.key;
+                const u = child.val();
+                const status = u.status || "APROVADO";
+
+                let statusBadge = "";
+                if (status === "APROVADO") statusBadge = `<span style="color:var(--accent-green); font-size:10px; font-weight:800;">APROVADO</span>`;
+                else if (status === "PENDENTE_APROVACAO") statusBadge = `<span style="color:var(--accent-gold); font-size:10px; font-weight:800;">AGUARDA APROVAÇÃO</span>`;
+                else statusBadge = `<span style="color:var(--accent-red); font-size:10px; font-weight:800;">BLOQUEADO</span>`;
+
+                html += `
+                    <div class="user-manage-card">
+                        <div style="flex:1;">
+                            <div style="font-weight:800; font-size:12px; color:var(--text-main);">${u.nome || id} <span style="font-size:10.5px; color:var(--text-muted);">(@${id})</span></div>
+                            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${u.email || 'Sem e-mail'} | ${u.cargo || 'Operação'}</div>
+                            <div style="font-size:10px; margin-top:3px;">Status: ${statusBadge}</div>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            ${status !== 'APROVADO' ? `<button onclick="window.atualizarStatusUsuario('${id}', 'APROVADO')" class="btn-acao-inline" style="color:var(--accent-green); border-color:var(--accent-green);">APROVAR</button>` : ''}
+                            ${status !== 'BLOQUEADO' ? `<button onclick="window.atualizarStatusUsuario('${id}', 'BLOQUEADO')" class="btn-acao-inline" style="color:var(--accent-gold); border-color:var(--accent-gold);">SUSPENDER</button>` : ''}
+                            <button onclick="window.eliminarUsuarioBase('${id}')" class="btn-acao-inline" style="color:var(--accent-red); border-color:var(--accent-red);">EXCLUIR</button>
+                        </div>
+                    </div>`;
+            });
+
+            container.innerHTML = html;
+
+        } catch (err) {
+            container.innerHTML = `<div style="color:var(--accent-red); padding:10px;">Erro ao carregar: ${err.message}</div>`;
+        }
+    };
+
+    window.atualizarStatusUsuario = async (userId, novoStatus) => {
+        try {
+            await update(ref(db, `usuarios/${userId}`), { status: novoStatus });
+            carregarListaModerarUsuarios();
+        } catch (err) {
+            alert("Erro ao atualizar status: " + err.message);
+        }
+    };
+
+    window.eliminarUsuarioBase = async (userId) => {
+        if (!confirm(`Tem a certeza que deseja eliminar permanentemente o utilizador @${userId}?`)) return;
+        try {
+            await remove(ref(db, `usuarios/${userId}`));
+            carregarListaModerarUsuarios();
+        } catch (err) {
+            alert("Erro ao eliminar utilizador: " + err.message);
+        }
+    };
+
+    window.executarLogout = () => {
+        localStorage.removeItem("fluidos_session");
+        localStorage.removeItem("fluidos_role");
+        location.reload();
+    };
+
+    /* MASCARAS E CONVERSÕES REGIONAIS */
     const aplicarMascaraDataBR = (input) => {
         if (!input) return;
         input.addEventListener('input', (e) => {
             let v = e.target.value.replace(/\D/g, '').slice(0, 8);
-            if (v.length >= 5) {
-                v = `${v.slice(0, 2)}/${v.slice(2, 4)}/${v.slice(4)}`;
-            } else if (v.length >= 3) {
-                v = `${v.slice(0, 2)}/${v.slice(2)}`;
-            }
+            if (v.length >= 5) v = `${v.slice(0, 2)}/${v.slice(2, 4)}/${v.slice(4)}`;
+            else if (v.length >= 3) v = `${v.slice(0, 2)}/${v.slice(2)}`;
             e.target.value = v;
         });
     };
 
     const obterDataAtualBR = () => {
         const d = new Date();
-        const dia = String(d.getDate()).padStart(2, '0');
-        const mes = String(d.getMonth() + 1).padStart(2, '0');
-        const ano = d.getFullYear();
-        return `${dia}/${mes}/${ano}`;
+        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
     };
 
     const normalizarTexto = (txt) => {
@@ -1057,80 +1359,34 @@
         return false;
     };
 
-    /* VALIDAÇÃO DE AUTORIZAÇÃO / SENHA (SUPORTA SENHA MESTRA E USUÁRIOS DO FIREBASE) */
     const validarCredencialOperacional = async (senhaDigitada) => {
         if (senhaDigitada === SENHA_MESTRA) return true;
         const usuarioLogado = localStorage.getItem("fluidos_session");
         if (usuarioLogado) {
             try {
                 const snap = await get(ref(db, `usuarios/${usuarioLogado.toLowerCase()}`));
-                if (snap.exists() && snap.val().senha === senhaDigitada) {
-                    return true;
-                }
+                if (snap.exists() && snap.val().senha === senhaDigitada) return true;
             } catch(e) {}
         }
         return false;
     };
 
-    /* ETAPA 1: CONTROLE GLOBAL DE LOGIN COM CONSULTA DINÂMICA AO FIREBASE */
-    window.executarLogin = async () => {
-        const u = document.getElementById("loginUser").value.trim().toLowerCase();
-        const p = document.getElementById("loginPass").value;
-
-        if (!u || !p) {
-            return alert("Preencha o usuário e a senha.");
-        }
-
-        // 1. Chave mestra de emergência
-        if (u.toUpperCase() === USER_ADMIN && p === SENHA_MESTRA) {
-            localStorage.setItem("fluidos_session", "matheus");
-            inicializarAplicacao();
-            return;
-        }
-
-        // 2. Consulta dinâmica ao nó usuarios/ do Realtime Database
-        try {
-            const snap = await get(ref(db, `usuarios/${u}`));
-            if (snap.exists()) {
-                const dadosUsuario = snap.val();
-                if (dadosUsuario.senha === p) {
-                    localStorage.setItem("fluidos_session", u);
-                    inicializarAplicacao();
-                    return;
-                }
-            }
-            alert("Acesso negado. Credenciais incorretas.");
-        } catch (err) {
-            alert("Erro ao validar login no banco: " + err.message);
-        }
-    };
-
-    window.executarLogout = () => {
-        localStorage.removeItem("fluidos_session");
-        location.reload();
-    };
-
+    /* GAVETA DE ATIVOS */
     window.abrirGavetaAtivos = () => {
-        const overlay = document.getElementById("drawerOverlay");
-        const container = document.getElementById("drawerContainer");
-        if (overlay) overlay.classList.add("active");
-        if (container) container.classList.add("active");
+        document.getElementById("drawerOverlay")?.classList.add("active");
+        document.getElementById("drawerContainer")?.classList.add("active");
         window.filtrarGavetaAtivos();
     };
 
     window.fecharGavetaAtivos = () => {
-        const overlay = document.getElementById("drawerOverlay");
-        const container = document.getElementById("drawerContainer");
-        if (overlay) overlay.classList.remove("active");
-        if (container) container.classList.remove("active");
+        document.getElementById("drawerOverlay")?.classList.remove("active");
+        document.getElementById("drawerContainer")?.classList.remove("active");
     };
 
     window.setFiltroSistemaGaveta = (sistema) => {
         filtroGavetaSistema = sistema;
-        const btnM = document.getElementById("chipSubMotor");
-        const btnC = document.getElementById("chipSubComp");
-        if (btnM) btnM.classList.toggle("active", sistema === "MOTOR_DIESEL");
-        if (btnC) btnC.classList.toggle("active", sistema === "COMPRESSOR_AR");
+        document.getElementById("chipSubMotor")?.classList.toggle("active", sistema === "MOTOR_DIESEL");
+        document.getElementById("chipSubComp")?.classList.toggle("active", sistema === "COMPRESSOR_AR");
         window.filtrarGavetaAtivos();
     };
 
@@ -1141,12 +1397,10 @@
         if (!container) return;
         container.innerHTML = "";
 
-        const filtrados = listaAtivosUnicos.filter(a => {
-            return String(a.prefixo || '').toLowerCase().includes(query) || String(a.modelo || '').toLowerCase().includes(query);
-        });
+        const filtrados = listaAtivosUnicos.filter(a => String(a.prefixo || '').toLowerCase().includes(query) || String(a.modelo || '').toLowerCase().includes(query));
 
         if (filtrados.length === 0) {
-            container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted); font-size:11px; font-family:'JetBrains Mono';">Nenhum ativo localizado com o filtro aplicado.</div>`;
+            container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted); font-size:11px; font-family:'JetBrains Mono';">Nenhum ativo localizado.</div>`;
             return;
         }
 
@@ -1162,19 +1416,10 @@
                 const interv = normalizarTexto(ultimo.statusIntervencao);
                 const crit = normalizarTexto(ultimo.criticidade);
 
-                if (interv === "CONCLUIDO") {
-                    status = "LIBERADO";
-                    icone = "🟢";
-                } else if (crit.includes("CRITICA")) {
-                    status = "CRÍTICA";
-                    icone = "🔴";
-                } else if (crit.includes("ATENCAO")) {
-                    status = "ATENÇÃO";
-                    icone = "🟡";
-                } else {
-                    status = "NORMAL";
-                    icone = "🟢";
-                }
+                if (interv === "CONCLUIDO") { status = "LIBERADO"; icone = "🟢"; }
+                else if (crit.includes("CRITICA")) { status = "CRÍTICA"; icone = "🔴"; }
+                else if (crit.includes("ATENCAO")) { status = "ATENÇÃO"; icone = "🟡"; }
+                else { status = "NORMAL"; icone = "🟢"; }
             }
 
             const isSelected = (String(a.prefixo) === String(locoSelecionada)) ? "selected" : "";
@@ -1192,9 +1437,7 @@
                     ${!tokenAcesso ? `<button type="button" class="btn-del-asset" title="Excluir Ativo">🗑️</button>` : ''}
                 </div>`;
 
-            divItem.querySelector("div").addEventListener("click", () => {
-                window.selecionarAtivoViaGaveta(a.prefixo);
-            });
+            divItem.querySelector("div").addEventListener("click", () => window.selecionarAtivoViaGaveta(a.prefixo));
 
             if (!tokenAcesso) {
                 const btnDel = divItem.querySelector(".btn-del-asset");
@@ -1221,11 +1464,9 @@
     window.alternarSistema = (sistema) => {
         sistemaAtivo = sistema;
         filtroGavetaSistema = sistema;
-        const tabM = document.getElementById("tabMotor");
-        const tabC = document.getElementById("tabComp");
+        document.getElementById("tabMotor")?.classList.toggle("active", sistema === "MOTOR_DIESEL");
+        document.getElementById("tabComp")?.classList.toggle("active", sistema === "COMPRESSOR_AR");
         const cadComp = document.getElementById("cadCompForm");
-        if (tabM) tabM.classList.toggle("active", sistema === "MOTOR_DIESEL");
-        if (tabC) tabC.classList.toggle("active", sistema === "COMPRESSOR_AR");
         if (cadComp) cadComp.value = sistema;
         atualizarBannerAtivo();
         window.renderizarTimelineLoco();
@@ -1237,10 +1478,7 @@
         listaAtivos.forEach(a => {
             const prefixoLimpo = String(a.prefixo || '').replace(/\D/g, '') || String(a.prefixo || '').trim();
             if (prefixoLimpo && !mapUnicos.has(prefixoLimpo)) {
-                mapUnicos.set(prefixoLimpo, {
-                    ...a,
-                    prefixo: prefixoLimpo
-                });
+                mapUnicos.set(prefixoLimpo, { ...a, prefixo: prefixoLimpo });
             }
         });
         listaAtivosUnicos = Array.from(mapUnicos.values());
@@ -1252,15 +1490,13 @@
         const pass = document.getElementById("modalDelAssetPass");
         if (sub) sub.innerText = `EXCLUIR ATIVO ${prefixo}`;
         if (pass) pass.value = "";
-        const modal = document.getElementById("modalDelAsset");
-        if (modal) modal.classList.add("active");
+        document.getElementById("modalDelAsset")?.classList.add("active");
         setTimeout(() => { if (pass) pass.focus(); }, 100);
     };
 
     window.fecharModalDelAtivo = () => {
         ativoParaExcluir = null;
-        const modal = document.getElementById("modalDelAsset");
-        if (modal) modal.classList.remove("active");
+        document.getElementById("modalDelAsset")?.classList.remove("active");
     };
 
     window.confirmarExclusaoAtivo = async () => {
@@ -1283,37 +1519,30 @@
         const valido = await validarCredencialOperacional(pass);
         if (!valido) return alert("Senha incorreta!");
 
-        const modelo = prompt("Digite o Modelo da Locomotiva (ex: GE, GE-U20-C, BB36-7):", "GE-U20-C");
+        const modelo = prompt("Digite o Modelo da Locomotiva:", "GE-U20-C");
         if (!modelo) return;
-
-        const prefixo = prompt("Digite o Prefixo da Locomotiva (ex: 3161):");
+        const prefixo = prompt("Digite o Prefixo da Locomotiva:");
         if (!prefixo) return;
 
         const prefixoLimpo = prefixo.replace(/\D/g, '') || prefixo.trim();
-
         if (listaAtivosUnicos.some(a => a.prefixo === prefixoLimpo)) {
             return alert("Este prefixo já está cadastrado!");
         }
 
-        push(ref(db, 'ativos'), {
-            modelo: modelo.trim().toUpperCase(),
-            prefixo: prefixoLimpo
-        }).then(() => {
-            alert(`Locomotiva ${modelo} ${prefixoLimpo} cadastrada com sucesso!`);
-            window.filtrarGavetaAtivos();
-        }).catch(err => alert("Erro ao salvar: " + err.message));
+        push(ref(db, 'ativos'), { modelo: modelo.trim().toUpperCase(), prefixo: prefixoLimpo })
+            .then(() => {
+                alert(`Locomotiva ${modelo} ${prefixoLimpo} cadastrada com sucesso!`);
+                window.filtrarGavetaAtivos();
+            })
+            .catch(err => alert("Erro ao salvar: " + err.message));
     };
 
     const atualizarBannerAtivo = () => {
         const obj = listaAtivosUnicos.find(a => a.prefixo === locoSelecionada);
         const mod = obj ? obj.modelo : "GE-U20-C";
-        const titleEl = document.getElementById("bannerLocoTitle");
-        const subEl = document.getElementById("bannerLocoSub");
-        const badgeEl = document.getElementById("badgeLocoFoco");
-
-        if (titleEl) titleEl.innerText = `${mod} ${locoSelecionada}`;
-        if (subEl) subEl.innerText = `Foco ativo em ${sistemaAtivo === 'MOTOR_DIESEL' ? 'Motor Diesel (GE 7FDL12)' : 'Compressor de Ar (WABCO 3CDC)'}`;
-        if (badgeEl) badgeEl.innerText = `${mod} ${locoSelecionada}`;
+        document.getElementById("bannerLocoTitle").innerText = `${mod} ${locoSelecionada}`;
+        document.getElementById("bannerLocoSub").innerText = `Foco ativo em ${sistemaAtivo === 'MOTOR_DIESEL' ? 'Motor Diesel (GE 7FDL12)' : 'Compressor de Ar (WABCO 3CDC)'}`;
+        document.getElementById("badgeLocoFoco").innerText = `${mod} ${locoSelecionada}`;
         
         const selectForm = document.getElementById("cadLocoForm");
         if (selectForm) selectForm.value = locoSelecionada;
@@ -1345,17 +1574,16 @@
         }
     };
 
+    /* COMPARTILHAMENTO TEMPORÁRIO CORRIGIDO PARA O GITHUB PAGES */
     window.abrirModalCompartilhamentoFluido = () => {
         const pass = document.getElementById("modalSharePass");
         if (pass) pass.value = "";
-        const overlay = document.getElementById("modalCompartilharOverlay");
-        if (overlay) overlay.classList.add("active");
+        document.getElementById("modalCompartilharOverlay")?.classList.add("active");
         setTimeout(() => { if (pass) pass.focus(); }, 150);
     };
 
     window.fecharModalCompartilhamentoFluido = () => {
-        const overlay = document.getElementById("modalCompartilharOverlay");
-        if (overlay) overlay.classList.remove("active");
+        document.getElementById("modalCompartilharOverlay")?.classList.remove("active");
     };
 
     window.executarCompartilhamentoProFluido = async () => {
@@ -1374,21 +1602,14 @@
             await update(ref(db, `chaves/${tokenId}`), { expira: tempoExpiracao });
             window.fecharModalCompartilhamentoFluido();
 
-            const dominioBase = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-                ? "https://mathfrotage.web.app"
-                : window.location.origin;
-
+            // Resolução do endereço do repositório no GitHub Pages
             const caminhoBase = window.location.href.split('?')[0];
             const urlAcesso = `${caminhoBase}?token=${tokenId}`;
             const msgTexto = `M.A.T.H. | FLUIDOS & INTEGRIDADE DE LUBRIFICANTES\nPainel técnico liberado para acompanhamento operacional.\nValidade: ${horasVal} Horas.\nLink: ${urlAcesso}`;
 
             if (navigator.share) {
                 try {
-                    await navigator.share({
-                        title: 'M.A.T.H. - Fluidos & Integridade',
-                        text: msgTexto,
-                        url: urlAcesso
-                    });
+                    await navigator.share({ title: 'M.A.T.H. - Fluidos & Integridade', text: msgTexto, url: urlAcesso });
                     return;
                 } catch (errShare) {}
             }
@@ -1400,30 +1621,26 @@
             const urlWhatsApp = `https://api.whatsapp.com/send?text=${encodeURIComponent(msgTexto)}`;
             window.open(urlWhatsApp, '_blank');
         } catch (err) {
-            alert("Erro ao emitir chave segura de compartilhamento: " + err.message);
+            alert("Erro ao emitir chave segura: " + err.message);
         }
     };
 
     window.abrirModalSenhaPDFFluido = () => {
         const passEl = document.getElementById("modalPDFFluidoPass");
         if (passEl) passEl.value = "";
-        const overlay = document.getElementById("modalPDFFluidoOverlay");
-        if (overlay) overlay.classList.add("active");
+        document.getElementById("modalPDFFluidoOverlay")?.classList.add("active");
         setTimeout(() => { if (passEl) passEl.focus(); }, 150);
     };
 
     window.fecharModalSenhaPDFFluido = () => {
-        const overlay = document.getElementById("modalPDFFluidoOverlay");
-        if (overlay) overlay.classList.remove("active");
+        document.getElementById("modalPDFFluidoOverlay")?.classList.remove("active");
     };
 
     window.confirmarEmissaoPDFFluido = async () => {
         const passEl = document.getElementById("modalPDFFluidoPass");
         const senhaDigitada = passEl ? passEl.value : "";
         const valido = await validarCredencialOperacional(senhaDigitada);
-        if (!valido) {
-            return alert("Senha incorreta! Emissão cancelada.");
-        }
+        if (!valido) return alert("Senha incorreta! Emissão cancelada.");
         window.fecharModalSenhaPDFFluido();
         exportarPDFFluidosCompleto();
     };
@@ -1455,16 +1672,12 @@
 
             const isConc = (normalizarTexto(l.statusIntervencao) === 'CONCLUIDO');
             let interv = isConc ? `[LIBERADO]\nData: ${formatarData(l.dataConclusao)}` : `[PENDENTE]`;
-            if (l.atividadesCorretivas) {
-                interv += `\nAções: ${limparParaPDF(l.atividadesCorretivas)}`;
-            }
+            if (l.atividadesCorretivas) interv += `\nAções: ${limparParaPDF(l.atividadesCorretivas)}`;
 
             rows.push([loco, comp, laudoNum, crit, datas, diag, acao, interv]);
         });
 
-        if (rows.length === 0) {
-            return alert("Nenhum laudo encontrado para gerar o relatório.");
-        }
+        if (rows.length === 0) return alert("Nenhum laudo encontrado.");
 
         doc.autoTable({
             startY: 26,
@@ -1473,16 +1686,7 @@
             theme: 'striped',
             headStyles: { fillColor: [13, 17, 26], textColor: [245, 158, 11], fontStyle: 'bold', fontSize: 8 },
             styles: { fontSize: 7.5, cellPadding: 2.5, valign: 'top' },
-            columnStyles: {
-                0: { cellWidth: 22 },
-                1: { cellWidth: 26 },
-                2: { cellWidth: 22 },
-                3: { cellWidth: 22 },
-                4: { cellWidth: 26 },
-                5: { cellWidth: 60 },
-                6: { cellWidth: 46 },
-                7: { cellWidth: 45 }
-            }
+            columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 26 }, 2: { cellWidth: 22 }, 3: { cellWidth: 22 }, 4: { cellWidth: 26 }, 5: { cellWidth: 60 }, 6: { cellWidth: 46 }, 7: { cellWidth: 45 } }
         });
 
         doc.save(`Relatorio_Fluidos_MATH_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`);
@@ -1497,8 +1701,6 @@
             grid.classList.remove("foco-laudos", "foco-graficos");
             btnLaudos.innerText = "⤢";
             btnGraficos.innerText = "⤢";
-            btnLaudos.title = "Ampliar";
-            btnGraficos.title = "Ampliar";
             modoFocoFluido = "PADRAO";
         } else {
             if (painelAlvo === "LAUDOS") {
@@ -1506,16 +1708,12 @@
                 grid.classList.add("foco-laudos");
                 btnLaudos.innerText = "⤡";
                 btnGraficos.innerText = "⤢";
-                btnLaudos.title = "Restaurar";
-                btnGraficos.title = "Ampliar";
                 modoFocoFluido = "LAUDOS";
             } else if (painelAlvo === "GRAFICOS") {
                 grid.classList.remove("foco-laudos");
                 grid.classList.add("foco-graficos");
                 btnGraficos.innerText = "⤡";
                 btnLaudos.innerText = "⤢";
-                btnGraficos.title = "Restaurar";
-                btnLaudos.title = "Ampliar";
                 modoFocoFluido = "GRAFICOS";
             }
         }
@@ -1530,11 +1728,8 @@
     window.toggleMinimizarFluido = (elementId, btn) => {
         const bodyEl = document.getElementById(elementId);
         if (!bodyEl) return;
-        
         const isMin = bodyEl.classList.toggle("minimized");
         btn.innerText = isMin ? "⤢" : "—";
-        btn.title = isMin ? "Expandir" : "Minimizar";
-
         if (!isMin) {
             setTimeout(() => {
                 if (barChartFluido) barChartFluido.resize();
@@ -1594,9 +1789,7 @@
             pieChartFluido.update();
         }
 
-        if (temporalChartFluido) {
-            window.atualizarGraficoTemporalFluido();
-        }
+        if (temporalChartFluido) window.atualizarGraficoTemporalFluido();
     };
 
     window.ampliarImagem = (src) => {
@@ -1605,38 +1798,24 @@
     };
 
     const atualizarCardContabilizacao = () => {
-        let countCrit = 0;
-        let countWarn = 0;
-        let countNorm = 0;
+        let countCrit = 0, countWarn = 0, countNorm = 0;
 
         todosLaudos.forEach(l => {
             const crit = normalizarTexto(l.criticidade);
             const interv = normalizarTexto(l.statusIntervencao);
 
-            if (interv === "CONCLUIDO") {
-                countNorm++;
-            } else if (crit.includes("CRITICA")) {
-                countCrit++;
-            } else if (crit.includes("ATENCAO")) {
-                countWarn++;
-            } else {
-                countNorm++;
-            }
+            if (interv === "CONCLUIDO") countNorm++;
+            else if (crit.includes("CRITICA")) countCrit++;
+            else if (crit.includes("ATENCAO")) countWarn++;
+            else countNorm++;
         });
 
-        const totalEl = document.getElementById("kpiLabelTotalGeral");
-        const critEl = document.getElementById("kpiCountCriticos");
-        const warnEl = document.getElementById("kpiCountAlertas");
-        const normEl = document.getElementById("kpiCountNormais");
-        const footerAtivosEl = document.getElementById("kpiFooterTotalAtivos");
-        const totalFrotaEl = document.getElementById("labelTotalFrotaTop");
-
-        if (totalEl) totalEl.innerText = `${todosLaudos.length} LAUDOS`;
-        if (critEl) critEl.innerText = countCrit;
-        if (warnEl) warnEl.innerText = countWarn;
-        if (normEl) normEl.innerText = countNorm;
-        if (footerAtivosEl) footerAtivosEl.innerText = `${listaAtivosUnicos.length} ATIVOS MONITORADOS`;
-        if (totalFrotaEl) totalFrotaEl.innerText = `${listaAtivosUnicos.length} ATIVOS EM MONITORAMENTO`;
+        document.getElementById("kpiLabelTotalGeral").innerText = `${todosLaudos.length} LAUDOS`;
+        document.getElementById("kpiCountCriticos").innerText = countCrit;
+        document.getElementById("kpiCountAlertas").innerText = countWarn;
+        document.getElementById("kpiCountNormais").innerText = countNorm;
+        document.getElementById("kpiFooterTotalAtivos").innerText = `${listaAtivosUnicos.length} ATIVOS MONITORADOS`;
+        document.getElementById("labelTotalFrotaTop").innerText = `${listaAtivosUnicos.length} ATIVOS EM MONITORAMENTO`;
     };
 
     window.renderizarTimelineLoco = () => {
@@ -1648,15 +1827,11 @@
 
         const filtrados = todosLaudos.filter(l => pertenceALocomotiva(l.locomotiva, locoSelecionada) && pertenceAoComponente(l.componente || l.sistema, sistemaAtivo));
 
-        if (filtroOrd === "ANTIGOS") {
-            filtrados.sort((a, b) => parseDataSegura(a.dataColeta) - parseDataSegura(b.dataColeta));
-        } else {
-            filtrados.sort((a, b) => parseDataSegura(b.dataColeta) - parseDataSegura(a.dataColeta));
-        }
+        if (filtroOrd === "ANTIGOS") filtrados.sort((a, b) => parseDataSegura(a.dataColeta) - parseDataSegura(b.dataColeta));
+        else filtrados.sort((a, b) => parseDataSegura(b.dataColeta) - parseDataSegura(a.dataColeta));
 
         const nomeSubsistema = sistemaAtivo === "MOTOR_DIESEL" ? "MOTOR DIESEL (GE 7FDL12)" : "COMPRESSOR DE AR (WABCO 3CDC)";
-        const titleHist = document.getElementById("titleHistorico");
-        if (titleHist) titleHist.innerText = `ANÁLISES: ${nomeSubsistema}`;
+        document.getElementById("titleHistorico").innerText = `ANÁLISES: ${nomeSubsistema}`;
 
         if (filtrados.length === 0) {
             lista.innerHTML = `
@@ -1679,7 +1854,6 @@
             }
 
             const estaConcluido = (normalizarTexto(l.statusIntervencao) === "CONCLUIDO");
-
             let blocoLiberacaoHtml = "";
             if (estaConcluido || l.dataConclusao || l.atividadesCorretivas) {
                 blocoLiberacaoHtml = `
@@ -1687,12 +1861,8 @@
                         <div class="box-liberacao-header">
                             <span>LIBERAÇÃO TÉCNICA / ATIVIDADES DA OFICINA</span>
                         </div>
-                        <div class="box-liberacao-item">
-                            <b>DATA LIBERAÇÃO:</b> ${formatarData(l.dataConclusao)}
-                        </div>
-                        <div class="box-liberacao-item">
-                            <b>AÇÕES EXECUTADAS:</b> ${l.atividadesCorretivas || 'Manutenção executada conforme plano de ação da oficina.'}
-                        </div>
+                        <div class="box-liberacao-item"><b>DATA LIBERAÇÃO:</b> ${formatarData(l.dataConclusao)}</div>
+                        <div class="box-liberacao-item"><b>AÇÕES EXECUTADAS:</b> ${l.atividadesCorretivas || 'Manutenção executada conforme plano de ação da oficina.'}</div>
                     </div>`;
             }
 
@@ -1719,7 +1889,7 @@
                         </div>
                         ${!tokenAcesso ? `
                             <div style="display:flex; gap:6px;">
-                                <button class="btn-acao-inline" onclick='window.prepararEdicaoLaudo(${JSON.stringify(l)})' title="Editar Laudo e Intervenção">EDITAR</button>
+                                <button class="btn-acao-inline" onclick='window.prepararEdicaoLaudo(${JSON.stringify(l)})' title="Editar Laudo">EDITAR</button>
                                 <button class="btn-acao-inline" onclick="window.deletarLaudo('${l.id}')" style="color:var(--accent-red);" title="Excluir Registro">APAGAR</button>
                             </div>
                         ` : ''}
@@ -1752,53 +1922,19 @@
                 data: {
                     labels: [],
                     datasets: [
-                        {
-                            label: 'Pendentes / Em Aberto',
-                            data: [],
-                            backgroundColor: gradPendente,
-                            borderColor: '#f59e0b',
-                            borderWidth: 1.5,
-                            borderRadius: 4,
-                            stack: 'statusStack'
-                        },
-                        {
-                            label: 'Liberados / Concluídos',
-                            data: [],
-                            backgroundColor: gradConcluido,
-                            borderColor: '#10b981',
-                            borderWidth: 1.5,
-                            borderRadius: 4,
-                            stack: 'statusStack'
-                        }
+                        { label: 'Pendentes / Em Aberto', data: [], backgroundColor: gradPendente, borderColor: '#f59e0b', borderWidth: 1.5, borderRadius: 4, stack: 'statusStack' },
+                        { label: 'Liberados / Concluídos', data: [], backgroundColor: gradConcluido, borderColor: '#10b981', borderWidth: 1.5, borderRadius: 4, stack: 'statusStack' }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                color: corTexto,
-                                font: { family: 'JetBrains Mono', size: 10, weight: 'bold' },
-                                boxWidth: 12,
-                                padding: 12
-                            }
-                        }
+                        legend: { display: true, position: 'top', labels: { color: corTexto, font: { family: 'JetBrains Mono', size: 10, weight: 'bold' }, boxWidth: 12, padding: 12 } }
                     },
                     scales: {
-                        x: {
-                            stacked: true,
-                            grid: { color: corGrid },
-                            ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10, weight: 'bold' } }
-                        },
-                        y: {
-                            stacked: true,
-                            grid: { color: corGrid },
-                            ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10, weight: 'bold' }, stepSize: 1 },
-                            beginAtZero: true
-                        }
+                        x: { stacked: true, grid: { color: corGrid }, ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10, weight: 'bold' } } },
+                        y: { stacked: true, grid: { color: corGrid }, ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10, weight: 'bold' }, stepSize: 1 }, beginAtZero: true }
                     }
                 }
             });
@@ -1812,35 +1948,20 @@
                 type: 'pie',
                 data: {
                     labels: ['Motor Diesel (GE 7FDL12)', 'Compressor de Ar (WABCO 3CDC)'],
-                    datasets: [{
-                        data: [0, 0],
-                        backgroundColor: ['#f59e0b', '#0284c7'],
-                        borderColor: eLight ? '#ffffff' : '#0d111a',
-                        borderWidth: 2
-                    }]
+                    datasets: [{ data: [0, 0], backgroundColor: ['#f59e0b', '#0284c7'], borderColor: eLight ? '#ffffff' : '#0d111a', borderWidth: 2 }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                color: corTexto,
-                                font: { family: 'JetBrains Mono', size: 10, weight: 'bold' },
-                                padding: 12
-                            }
-                        },
+                        legend: { display: true, position: 'top', labels: { color: corTexto, font: { family: 'JetBrains Mono', size: 10, weight: 'bold' }, padding: 12 } },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const label = context.label || '';
                                     const value = context.raw || 0;
-                                    const dataset = context.chart.data.datasets[0];
-                                    const total = dataset.data.reduce((acc, curr) => acc + curr, 0);
+                                    const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
                                     const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                    return ` ${label}: ${value} laudo(s) (${percent}%)`;
+                                    return ` ${context.label}: ${value} (${percent}%)`;
                                 }
                             }
                         }
@@ -1851,15 +1972,13 @@
     };
 
     const sincronizarDadosGraficosFluidos = () => {
-        let contagemPendente = {};
-        let contagemConcluido = {};
+        let contagemPendente = {}, contagemConcluido = {};
         listaAtivosUnicos.forEach(a => {
             contagemPendente[a.prefixo] = 0;
             contagemConcluido[a.prefixo] = 0;
         });
 
-        let contagemMotor = 0;
-        let contagemComp = 0;
+        let contagemMotor = 0, contagemComp = 0;
 
         todosLaudos.forEach(l => {
             const pref = String(l.locomotiva || '').replace(/\D/g, '');
@@ -1870,24 +1989,17 @@
                 else contagemPendente[pref]++;
             }
 
-            if (pertenceAoComponente(l.componente || l.sistema, 'MOTOR_DIESEL')) {
-                contagemMotor++;
-            } else if (pertenceAoComponente(l.componente || l.sistema, 'COMPRESSOR_AR')) {
-                contagemComp++;
-            }
+            if (pertenceAoComponente(l.componente || l.sistema, 'MOTOR_DIESEL')) contagemMotor++;
+            else if (pertenceAoComponente(l.componente || l.sistema, 'COMPRESSOR_AR')) contagemComp++;
         });
 
         const paresOrdenados = Object.keys(contagemPendente)
-            .map(pref => {
-                const pend = contagemPendente[pref] || 0;
-                const conc = contagemConcluido[pref] || 0;
-                return {
-                    prefixo: pref,
-                    pendente: pend,
-                    concluido: conc,
-                    total: pend + conc
-                };
-            })
+            .map(pref => ({
+                prefixo: pref,
+                pendente: contagemPendente[pref] || 0,
+                concluido: contagemConcluido[pref] || 0,
+                total: (contagemPendente[pref] || 0) + (contagemConcluido[pref] || 0)
+            }))
             .sort((a, b) => b.total - a.total);
 
         if (barChartFluido) {
@@ -1911,8 +2023,7 @@
         if (!selAno) return;
 
         const anosSet = new Set();
-        const anoAtual = new Date().getFullYear().toString();
-        anosSet.add(anoAtual);
+        anosSet.add(new Date().getFullYear().toString());
 
         todosLaudos.forEach(l => {
             const raw = l.dataColeta || l.dataLaudo;
@@ -1958,10 +2069,7 @@
             const mesIdx = d.getMonth();
             const locoLimpa = String(l.locomotiva || '').replace(/\D/g, '');
 
-            const atendeAno = (anoL === selAno);
-            const atendeLoco = (selLoco === "TODAS" || locoLimpa === selLoco);
-
-            if (atendeAno && atendeLoco && mesIdx >= 0 && mesIdx < 12) {
+            if (anoL === selAno && (selLoco === "TODAS" || locoLimpa === selLoco) && mesIdx >= 0 && mesIdx < 12) {
                 contagemMeses[mesIdx]++;
             }
         });
@@ -1979,29 +2087,15 @@
             type: 'bar',
             data: {
                 labels: mesesNomesAbrev,
-                datasets: [{
-                    label: `Laudos de Fluidos (${selAno})`,
-                    data: contagemMeses,
-                    backgroundColor: gradTemporal,
-                    borderColor: '#0284c7',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
+                datasets: [{ label: `Laudos (${selAno})`, data: contagemMeses, backgroundColor: gradTemporal, borderColor: '#0284c7', borderWidth: 1, borderRadius: 4 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: {
-                        grid: { color: corGrid },
-                        ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10 } }
-                    },
-                    y: {
-                        grid: { color: corGrid },
-                        ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10 }, stepSize: 1 },
-                        beginAtZero: true
-                    }
+                    x: { grid: { color: corGrid }, ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10 } } },
+                    y: { grid: { color: corGrid }, ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10 }, stepSize: 1 }, beginAtZero: true }
                 }
             }
         });
@@ -2049,30 +2143,17 @@
         renderizarBufferFotos();
     };
 
-    /* LIMPAR CAMPOS DE DIGITAÇÃO DO FORMULÁRIO */
     window.limparFormularioCampos = () => {
-        const inputNumLaudo = document.getElementById("cadNumLaudoForm");
-        const inputDataColeta = document.getElementById("cadDataColetaForm");
-        const inputDataLaudo = document.getElementById("cadDataLaudoForm");
-        const inputDiag = document.getElementById("cadDiagForm");
-        const inputAcao = document.getElementById("cadAcaoForm");
-        const inputDataConc = document.getElementById("cadDataConcForm");
-        const inputAtivCorr = document.getElementById("cadAtivCorrForm");
-        const inputFoto = document.getElementById("photoInputFluido");
-        const selCrit = document.getElementById("cadCritForm");
-        const selStatus = document.getElementById("cadStatusIntervForm");
-
-        if (inputNumLaudo) inputNumLaudo.value = "";
-        if (inputDataColeta) inputDataColeta.value = "";
-        if (inputDataLaudo) inputDataLaudo.value = "";
-        if (inputDiag) inputDiag.value = "";
-        if (inputAcao) inputAcao.value = "";
-        if (inputDataConc) inputDataConc.value = "";
-        if (inputAtivCorr) inputAtivCorr.value = "";
-        if (inputFoto) inputFoto.value = "";
-        if (selCrit) selCrit.value = "NORMAL";
-        if (selStatus) selStatus.value = "PENDENTE";
-
+        document.getElementById("cadNumLaudoForm").value = "";
+        document.getElementById("cadDataColetaForm").value = "";
+        document.getElementById("cadDataLaudoForm").value = "";
+        document.getElementById("cadDiagForm").value = "";
+        document.getElementById("cadAcaoForm").value = "";
+        document.getElementById("cadDataConcForm").value = "";
+        document.getElementById("cadAtivCorrForm").value = "";
+        document.getElementById("photoInputFluido").value = "";
+        document.getElementById("cadCritForm").value = "NORMAL";
+        document.getElementById("cadStatusIntervForm").value = "PENDENTE";
         fotosTemp = [];
         renderizarBufferFotos();
     };
@@ -2096,9 +2177,7 @@
         renderizarBufferFotos();
 
         const formBody = document.getElementById("bodyAdminCadastroForm");
-        if (formBody && formBody.classList.contains("minimized")) {
-            formBody.classList.remove("minimized");
-        }
+        if (formBody && formBody.classList.contains("minimized")) formBody.classList.remove("minimized");
 
         document.getElementById("formTitle").innerText = `EDITANDO: LOCO ${laudo.locomotiva}`;
         document.getElementById("btnSalvarAnalise").innerText = "SALVAR ALTERAÇÕES COMPLETAS";
@@ -2119,10 +2198,8 @@
         renderizarBufferFotos();
 
         const hojeBR = obterDataAtualBR();
-        const inputDataColeta = document.getElementById('cadDataColetaForm');
-        const inputDataLaudo = document.getElementById('cadDataLaudoForm');
-        if (inputDataColeta) inputDataColeta.value = hojeBR;
-        if (inputDataLaudo) inputDataLaudo.value = hojeBR;
+        document.getElementById('cadDataColetaForm').value = hojeBR;
+        document.getElementById('cadDataLaudoForm').value = hojeBR;
 
         document.getElementById("formTitle").innerText = "REGISTRAR NOVA ANÁLISE";
         document.getElementById("btnSalvarAnalise").innerText = "GRAVAR ANÁLISE NO BANCO";
@@ -2211,6 +2288,18 @@
         document.getElementById("telaLogin").style.display = "none";
         document.getElementById("painelPrincipal").style.display = "block";
 
+        const usuarioSessao = localStorage.getItem("fluidos_session") || "Operador";
+        const roleSessao = localStorage.getItem("fluidos_role") || "INSPETOR";
+        
+        const badgeUser = document.getElementById("badgeCurrentUser");
+        if (badgeUser) badgeUser.innerText = `${usuarioSessao.toUpperCase()} [${roleSessao}]`;
+
+        // Ativa o botão de Gestão de Usuários caso seja o administrador mestre
+        const btnAdminUsers = document.getElementById("btnAdminGestaoUsers");
+        if (btnAdminUsers) {
+            btnAdminUsers.style.display = (usuarioSessao.toLowerCase() === "matheus") ? "inline-flex" : "none";
+        }
+
         if (localStorage.getItem("visao_theme") === "light") {
             document.body.classList.add("light-theme");
         }
@@ -2220,28 +2309,16 @@
         const inputDataLaudo = document.getElementById('cadDataLaudoForm');
         const inputDataConc = document.getElementById('cadDataConcForm');
 
-        if (inputDataColeta) {
-            inputDataColeta.value = hojeBR;
-            aplicarMascaraDataBR(inputDataColeta);
-        }
-        if (inputDataLaudo) {
-            inputDataLaudo.value = hojeBR;
-            aplicarMascaraDataBR(inputDataLaudo);
-        }
-        if (inputDataConc) {
-            aplicarMascaraDataBR(inputDataConc);
-        }
+        if (inputDataColeta) { inputDataColeta.value = hojeBR; aplicarMascaraDataBR(inputDataColeta); }
+        if (inputDataLaudo) { inputDataLaudo.value = hojeBR; aplicarMascaraDataBR(inputDataLaudo); }
+        if (inputDataConc) { aplicarMascaraDataBR(inputDataConc); }
 
-        setTimeout(() => {
-            inicializarGraficosFluidos();
-        }, 60);
+        setTimeout(() => { inicializarGraficosFluidos(); }, 60);
 
         onValue(ref(db, 'ativos'), (snap) => {
             listaAtivos = [];
             if (snap.exists()) {
-                snap.forEach(child => {
-                    listaAtivos.push({ id: child.key, ...child.val() });
-                });
+                snap.forEach(child => listaAtivos.push({ id: child.key, ...child.val() }));
             } else {
                 const frotaPadrao = [
                     { modelo: "GE-U20-C", prefixo: "2613" }, { modelo: "GE-U20-C", prefixo: "2625" },
@@ -2269,9 +2346,7 @@
         onValue(ref(db, 'laudos_laboratoriais'), (snap) => {
             todosLaudos = [];
             if (snap.exists()) {
-                snap.forEach(child => {
-                    todosLaudos.push({ id: child.key, ...child.val() });
-                });
+                snap.forEach(child => todosLaudos.push({ id: child.key, ...child.val() }));
             }
             window.renderizarTimelineLoco();
             atualizarBannerAtivo();
@@ -2290,12 +2365,10 @@
                     return; 
                 }
                 inicializarAplicacao();
-                const painelCadastro = document.getElementById("painelAdminCadastro");
-                if (painelCadastro) painelCadastro.style.display = "none";
-                const btnShare = document.getElementById("btnCompartilhar");
-                if (btnShare) btnShare.style.display = "none";
-                const btnLogout = document.getElementById("btnLogout");
-                if (btnLogout) btnLogout.style.display = "none";
+                document.getElementById("painelAdminCadastro")?.style.setProperty("display", "none");
+                document.getElementById("btnCompartilhar")?.style.setProperty("display", "none");
+                document.getElementById("btnLogout")?.style.setProperty("display", "none");
+                document.getElementById("btnAdminGestaoUsers")?.style.setProperty("display", "none");
             } catch (err) {
                 console.error("Falha ao validar token:", err);
             }
