@@ -992,16 +992,15 @@
     import { getDatabase, ref, push, update, onValue, remove, get, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const firebaseConfig = { 
-    apiKey: "AIzaSyArTUjStVg-JrYZq0xNgh59w_aYZmWq7Y8", 
-    authDomain: "mathfrotage.firebaseapp.com", 
-    databaseURL: "https://mathfrotage-default-rtdb.firebaseio.com", 
-    projectId: "mathfrotage", 
-    storageBucket: "mathfrotage.firebasestorage.app", 
-    messagingSenderId: "148867753477", 
-    appId: "1:148867753477:web:9048ce8ed2b1ffbb651e6c" 
-
-    
+    /* CONFIGURAÇÃO COM A CHAVE ATIVA DO PROJETO GOOGLE CLOUD */
+    const firebaseConfig = { 
+        apiKey: "AIzaSyB0ZbJT8McmSuEu2oD77EbPSs_ltymJJLo", 
+        authDomain: "mathfrotage.firebaseapp.com", 
+        databaseURL: "https://mathfrotage-default-rtdb.firebaseio.com", 
+        projectId: "mathfrotage", 
+        storageBucket: "mathfrotage.firebasestorage.app", 
+        messagingSenderId: "148867753477", 
+        appId: "1:148867753477:web:9048ce8ed2b1ffbb651e6c" 
     };
 
     const app = initializeApp(firebaseConfig);
@@ -1083,25 +1082,20 @@ const firebaseConfig = {
             // 2. Dispara o e-mail oficial com o link de confirmação do Google
             await sendEmailVerification(user);
 
-            // 3. Registra os dados no Realtime Database com status PENDENTE
-            await set(ref(db, `usuarios/${user.uid}`), {
-                uid: user.uid,
-                userId: userId,
-                nome: nome,
-                email: email,
-                cargo: cargo,
-                status: "PENDENTE",
-                dataSolicitacao: new Date().toISOString()
-            });
-
-            // 4. Também mantém a indexação por ID
-            await set(ref(db, `usuarios_por_id/${userId}`), {
-                uid: user.uid,
-                email: email
-            });
+            // 3. Registra os dados no Realtime Database com status PENDENTE (Tratamento seguro)
+            try {
+                await set(ref(db, `usuarios/${user.uid}`), { uid: user.uid, userId: userId, nome: nome, email: email, cargo: cargo, status: "PENDENTE", dataSolicitacao: new Date().toISOString() });  await set(ref(db, `usuarios_por_id/${userId}`), {
+                    uid: user.uid,
+                    email: email
+                });
+            } catch (errDb) {
+                console.warn("Aviso de escrita no banco de dados:", errDb);
+            }
 
             // Desconecta temporariamente até o usuário verificar o e-mail
-            await signOut(auth);
+            try {
+                await signOut(auth);
+            } catch (errSignOut) {}
 
             alert(`✅ E-mail de confirmação enviado com sucesso para ${email}!\n\n1. Abra a sua caixa de entrada (ou pasta de spam).\n2. Clique no link oficial para confirmar o e-mail.\n3. Após a confirmação, o Administrador MATHEUS liberará seu acesso.`);
 
@@ -1146,25 +1140,7 @@ const firebaseConfig = {
 
             // Se digitou o ID em vez de e-mail, busca o e-mail cadastrado
             if (!u.includes("@")) {
-                const snapId = await get(ref(db, `usuarios_por_id/${u.toLowerCase()}`));
-                if (!snapId.exists()) {
-                    return alert("Usuário não localizado no sistema.");
-                }
-                emailLogin = snapId.val().email;
-            }
-
-            // Realiza autenticação via Firebase Auth
-            const userCred = await signInWithEmailAndPassword(auth, emailLogin, p);
-            const user = userCred.user;
-
-            // 2. Valida se o e-mail foi confirmado pelo link
-            if (!user.emailVerified) {
-                await signOut(auth);
-                return alert("⚠️ E-mail não confirmado!\nAbra sua caixa de entrada e clique no link de ativação enviado pelo Google.");
-            }
-
-            // 3. Valida aprovação do Administrador no Realtime Database
-            const snapUser = await get(ref(db, `usuarios/${user.uid}`));
+                const snapId = await get(ref(db, `usuarios_por_id/${u.toLowerCase()}`)); if (!snapId.exists()) { return alert("Usuário não localizado no sistema."); } emailLogin = snapId.val().email; }  // Realiza autenticação via Firebase Auth const userCred = await signInWithEmailAndPassword(auth, emailLogin, p); const user = userCred.user;  // 2. Valida se o e-mail foi confirmado pelo link if (!user.emailVerified) { await signOut(auth); return alert("⚠️ E-mail não confirmado!\nAbra sua caixa de entrada e clique no link de ativação enviado pelo Google."); }  // 3. Valida aprovação do Administrador no Realtime Database const snapUser = await get(ref(db, `usuarios/${user.uid}`));
             if (!snapUser.exists()) {
                 await signOut(auth);
                 return alert("Perfil de usuário não localizado no banco de dados.");
@@ -1236,7 +1212,7 @@ const firebaseConfig = {
                     <div class="user-manage-card">
                         <div style="flex:1;">
                             <div style="font-weight:800; font-size:12px; color:var(--text-main);">${u.nome || uid} <span style="font-size:10.5px; color:var(--text-muted);">(@${u.userId || 'id'})</span></div>
-                            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${u.email || 'Sem e-mail'} | ${u.cargo || 'Oficina'}</div>
+                            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${u.email \vert{}\vert{} 'Sem e-mail'} \vert{}${u.cargo || 'Oficina'}</div>
                             <div style="font-size:10px; margin-top:3px;">Status: ${statusBadge}</div>
                         </div>
                         <div style="display:flex; gap:6px;">
@@ -1250,13 +1226,7 @@ const firebaseConfig = {
             container.innerHTML = html;
 
         } catch (err) {
-            container.innerHTML = `<div style="color:var(--accent-red); padding:10px;">Erro ao carregar: ${err.message}</div>`;
-        }
-    };
-
-    window.atualizarStatusUsuario = async (uid, novoStatus) => {
-        try {
-            await update(ref(db, `usuarios/${uid}`), { status: novoStatus, dataAprovacao: new Date().toISOString() });
+            container.innerHTML = `<div style="color:var(--accent-red); padding:10px;">Erro ao carregar: ${err.message}</div>`; } };  window.atualizarStatusUsuario = async (uid, novoStatus) => { try { await update(ref(db, `usuarios/${uid}`), { status: novoStatus, dataAprovacao: new Date().toISOString() });
             carregarListaModerarUsuarios();
         } catch (err) {
             alert("Erro ao atualizar status: " + err.message);
@@ -1267,27 +1237,7 @@ const firebaseConfig = {
         if (!confirm(`Deseja remover permanentemente o registro deste usuário?`)) return;
         try {
             await remove(ref(db, `usuarios/${uid}`));
-            if (userId) await remove(ref(db, `usuarios_por_id/${userId}`));
-            carregarListaModerarUsuarios();
-        } catch (err) {
-            alert("Erro ao eliminar usuário: " + err.message);
-        }
-    };
-
-    window.executarLogout = async () => {
-        try { await signOut(auth); } catch(e) {}
-        localStorage.removeItem("fluidos_session");
-        localStorage.removeItem("fluidos_uid");
-        localStorage.removeItem("fluidos_role");
-        location.reload();
-    };
-
-    /* MASCARAS E CONVERSÕES REGIONAIS */
-    const aplicarMascaraDataBR = (input) => {
-        if (!input) return;
-        input.addEventListener('input', (e) => {
-            let v = e.target.value.replace(/\D/g, '').slice(0, 8);
-            if (v.length >= 5) v = `${v.slice(0, 2)}/${v.slice(2, 4)}/${v.slice(4)}`;
+            if (userId) await remove(ref(db, `usuarios_por_id/${userId}`)); carregarListaModerarUsuarios(); } catch (err) { alert("Erro ao eliminar usuário: " + err.message); } };  window.executarLogout = async () => { try { await signOut(auth); } catch(e) {} localStorage.removeItem("fluidos_session"); localStorage.removeItem("fluidos_uid"); localStorage.removeItem("fluidos_role"); location.reload(); };  /* MASCARAS E CONVERSÕES REGIONAIS */ const aplicarMascaraDataBR = (input) => { if (!input) return; input.addEventListener('input', (e) => { let v = e.target.value.replace(/\D/g, '').slice(0, 8); if (v.length >= 5) v = `${v.slice(0, 2)}/${v.slice(2, 4)}/${v.slice(4)}`;
             else if (v.length >= 3) v = `${v.slice(0, 2)}/${v.slice(2)}`;
             e.target.value = v;
         });
@@ -1295,30 +1245,12 @@ const firebaseConfig = {
 
     const obterDataAtualBR = () => {
         const d = new Date();
-        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-    };
-
-    const normalizarTexto = (txt) => {
-        if (!txt) return "";
-        return String(txt).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
-    };
-
-    const limparParaPDF = (txt) => {
-        if (!txt) return "";
-        return String(txt).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, ' ').trim();
-    };
-
-    const parseDataSegura = (str) => {
-        if (!str) return 0;
-        if (typeof str === 'string' && str.includes('/')) {
-            const p = str.split('/');
-            if (p.length === 3) return new Date(`${p[2]}-${p[1]}-${p[0]}`).getTime() || 0;
+        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; };  const normalizarTexto = (txt) => { if (!txt) return ""; return String(txt).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase(); };  const limparParaPDF = (txt) => { if (!txt) return ""; return String(txt).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, ' ').trim(); };  const parseDataSegura = (str) => { if (!str) return 0; if (typeof str === 'string' && str.includes('/')) { const p = str.split('/'); if (p.length === 3) return new Date(`${p[2]}-${p[1]}-${p[0]}`).getTime() || 0;
         }
         if (typeof str === 'string' && str.includes('-')) {
             const p = str.split('-');
             if (p.length === 3) {
-                if (p[0].length === 4) return new Date(`${p[0]}-${p[1]}-${p[2]}`).getTime() || 0;
-                return new Date(`${p[2]}-${p[1]}-${p[0]}`).getTime() || 0;
+                if (p[0].length === 4) return new Date(`${p[0]}-${p[1]}-${p[2]}`).getTime() \vert{}\vert{} 0; return new Date(`${p[2]}-${p[1]}-${p[0]}`).getTime() || 0;
             }
         }
         return new Date(str).getTime() || 0;
@@ -1330,8 +1262,7 @@ const firebaseConfig = {
         if (typeof str === 'string' && str.includes('-')) {
             const p = str.split('-');
             if (p.length === 3) {
-                if (p[0].length === 4) return `${p[2]}/${p[1]}/${p[0]}`;
-                return `${p[0]}/${p[1]}/${p[2]}`;
+                if (p[0].length === 4) return `${p[2]}/${p[1]}/${p[0]}`; return `${p[0]}/${p[1]}/${p[2]}`;
             }
         }
         return String(str);
@@ -1342,30 +1273,7 @@ const firebaseConfig = {
         const limpo = str.trim();
         if (limpo.includes('/')) {
             const p = limpo.split('/');
-            if (p.length === 3 && p[2].length === 4) return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
-        }
-        return limpo;
-    };
-
-    const pertenceALocomotiva = (locoSalva, prefixoBuscado) => {
-        const s1 = String(locoSalva || '').replace(/\D/g, '');
-        const s2 = String(prefixoBuscado || '').replace(/\D/g, '');
-        return s1 === s2 || String(locoSalva).includes(prefixoBuscado);
-    };
-
-    const pertenceAoComponente = (compSalvo, subBuscado) => {
-        const c = normalizarTexto(compSalvo);
-        if (subBuscado === 'MOTOR_DIESEL') return c.includes('MOTOR') || c.includes('MEC');
-        if (subBuscado === 'COMPRESSOR_AR') return c.includes('COMPRESSOR') || c.includes('PNEUM') || c.includes('3CDC');
-        return false;
-    };
-
-    const validarCredencialOperacional = async (senhaDigitada) => {
-        if (senhaDigitada === SENHA_MESTRA) return true;
-        const uidLogado = localStorage.getItem("fluidos_uid");
-        if (uidLogado) {
-            try {
-                const snap = await get(ref(db, `usuarios/${uidLogado}`));
+            if (p.length === 3 && p[2].length === 4) return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`; } return limpo; };  const pertenceALocomotiva = (locoSalva, prefixoBuscado) => { const s1 = String(locoSalva \vert{}\vert{} '').replace(/\D/g, ''); const s2 = String(prefixoBuscado \vert{}\vert{} '').replace(/\D/g, ''); return s1 === s2 \vert{}\vert{} String(locoSalva).includes(prefixoBuscado); };  const pertenceAoComponente = (compSalvo, subBuscado) => { const c = normalizarTexto(compSalvo); if (subBuscado === 'MOTOR_DIESEL') return c.includes('MOTOR') \vert{}\vert{} c.includes('MEC'); if (subBuscado === 'COMPRESSOR_AR') return c.includes('COMPRESSOR') \vert{}\vert{} c.includes('PNEUM') \vert{}\vert{} c.includes('3CDC'); return false; };  const validarCredencialOperacional = async (senhaDigitada) => { if (senhaDigitada === SENHA_MESTRA) return true; const uidLogado = localStorage.getItem("fluidos_uid"); if (uidLogado) { try { const snap = await get(ref(db, `usuarios/${uidLogado}`));
                 if (snap.exists()) return true;
             } catch(e) {}
         }
@@ -1430,12 +1338,11 @@ const firebaseConfig = {
             divItem.className = `drawer-item ${isSelected}`;
             divItem.innerHTML = `
                 <div style="flex:1;">
-                    <div style="font-family:'JetBrains Mono'; font-weight:800; font-size:13px; color:var(--text-main);">${a.modelo || 'GE-U20-C'} ${a.prefixo}</div>
+                    <div style="font-family:'JetBrains Mono'; font-weight:800; font-size:13px; color:var(--text-main);">${a.modelo \vert{}\vert{} 'GE-U20-C'}${a.prefixo}</div>
                     <div style="font-size:10px; color:var(--text-muted); font-family:'JetBrains Mono'; margin-top:2px;">[${labelSubFiltro}] Condição: ${status}</div>
                 </div>
                 <div style="display:flex; align-items:center;">
-                    <span style="font-size:16px;">${icone}</span>
-                    ${!tokenAcesso ? `<button type="button" class="btn-del-asset" title="Excluir Ativo">🗑️</button>` : ''}
+                    <span style="font-size:16px;">${icone}</span>${!tokenAcesso ? `<button type="button" class="btn-del-asset" title="Excluir Ativo">🗑️</button>` : ''}
                 </div>`;
 
             divItem.querySelector("div").addEventListener("click", () => window.selecionarAtivoViaGaveta(a.prefixo));
@@ -1507,8 +1414,7 @@ const firebaseConfig = {
         if (!ativoParaExcluir) return;
 
         try {
-            await remove(ref(db, `ativos/${ativoParaExcluir.id}`));
-            alert(`Ativo ${ativoParaExcluir.prefixo} excluído com sucesso.`);
+            await remove(ref(db, `ativos/${ativoParaExcluir.id}`)); alert(`Ativo ${ativoParaExcluir.prefixo} excluído com sucesso.`);
             window.fecharModalDelAtivo();
         } catch(err) {
             alert("Erro ao excluir ativo: " + err.message);
@@ -1532,7 +1438,7 @@ const firebaseConfig = {
 
         push(ref(db, 'ativos'), { modelo: modelo.trim().toUpperCase(), prefixo: prefixoLimpo })
             .then(() => {
-                alert(`Locomotiva ${modelo} ${prefixoLimpo} cadastrada com sucesso!`);
+                alert(`Locomotiva ${modelo}${prefixoLimpo} cadastrada com sucesso!`);
                 window.filtrarGavetaAtivos();
             })
             .catch(err => alert("Erro ao salvar: " + err.message));
@@ -1541,9 +1447,9 @@ const firebaseConfig = {
     const atualizarBannerAtivo = () => {
         const obj = listaAtivosUnicos.find(a => a.prefixo === locoSelecionada);
         const mod = obj ? obj.modelo : "GE-U20-C";
-        document.getElementById("bannerLocoTitle").innerText = `${mod} ${locoSelecionada}`;
+        document.getElementById("bannerLocoTitle").innerText = `${mod}${locoSelecionada}`;
         document.getElementById("bannerLocoSub").innerText = `Foco ativo em ${sistemaAtivo === 'MOTOR_DIESEL' ? 'Motor Diesel (GE 7FDL12)' : 'Compressor de Ar (WABCO 3CDC)'}`;
-        document.getElementById("badgeLocoFoco").innerText = `${mod} ${locoSelecionada}`;
+        document.getElementById("badgeLocoFoco").innerText = `${mod}${locoSelecionada}`;
         
         const selectForm = document.getElementById("cadLocoForm");
         if (selectForm) selectForm.value = locoSelecionada;
@@ -1605,20 +1511,7 @@ const firebaseConfig = {
 
             const caminhoBase = window.location.href.split('?')[0];
             const urlAcesso = `${caminhoBase}?token=${tokenId}`;
-            const msgTexto = `M.A.T.H. | FLUIDOS & INTEGRIDADE DE LUBRIFICANTES\nPainel técnico liberado para acompanhamento operacional.\nValidade: ${horasVal} Horas.\nLink: ${urlAcesso}`;
-
-            if (navigator.share) {
-                try {
-                    await navigator.share({ title: 'M.A.T.H. - Fluidos & Integridade', text: msgTexto, url: urlAcesso });
-                    return;
-                } catch (errShare) {}
-            }
-
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(urlAcesso);
-            }
-
-            const urlWhatsApp = `https://api.whatsapp.com/send?text=${encodeURIComponent(msgTexto)}`;
+            const msgTexto = `M.A.T.H. | FLUIDOS & INTEGRIDADE DE LUBRIFICANTES\nPainel técnico liberado para acompanhamento operacional.\nValidade: ${horasVal} Horas.\nLink: ${urlAcesso}`;  if (navigator.share) { try { await navigator.share({ title: 'M.A.T.H. - Fluidos & Integridade', text: msgTexto, url: urlAcesso }); return; } catch (errShare) {} }  if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(urlAcesso); }  const urlWhatsApp = `https://api.whatsapp.com/send?text=${encodeURIComponent(msgTexto)}`;
             window.open(urlWhatsApp, '_blank');
         } catch (err) {
             alert("Erro ao emitir chave: " + err.message);
@@ -1666,13 +1559,12 @@ const firebaseConfig = {
             const comp = l.componente === 'MOTOR_DIESEL' ? 'Motor Diesel' : 'Compressor 3CDC';
             const laudoNum = l.numeroLaudo || 'N/I';
             const crit = l.criticidade || 'NORMAL';
-            const datas = `Coleta: ${formatarData(l.dataColeta)}\nLaudo: ${formatarData(l.dataLaudo || l.dataColeta)}`;
+            const datas = `Coleta: ${formatarData(l.dataColeta)}\nLaudo:${formatarData(l.dataLaudo || l.dataColeta)}`;
             const diag = limparParaPDF(l.diagnostico || 'Sem diagnóstico');
             const acao = limparParaPDF(l.acao || 'Sem recomendação');
 
             const isConc = (normalizarTexto(l.statusIntervencao) === 'CONCLUIDO');
-            let interv = isConc ? `[LIBERADO]\nData: ${formatarData(l.dataConclusao)}` : `[PENDENTE]`;
-            if (l.atividadesCorretivas) interv += `\nAções: ${limparParaPDF(l.atividadesCorretivas)}`;
+            let interv = isConc ? `[LIBERADO]\nData: ${formatarData(l.dataConclusao)}` : `[PENDENTE]`; if (l.atividadesCorretivas) interv += `\nAções: ${limparParaPDF(l.atividadesCorretivas)}`;
 
             rows.push([loco, comp, laudoNum, crit, datas, diag, acao, interv]);
         });
@@ -1689,68 +1581,7 @@ const firebaseConfig = {
             columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 26 }, 2: { cellWidth: 22 }, 3: { cellWidth: 22 }, 4: { cellWidth: 26 }, 5: { cellWidth: 60 }, 6: { cellWidth: 46 }, 7: { cellWidth: 45 } }
         });
 
-        doc.save(`Relatorio_Fluidos_MATH_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`);
-    };
-
-    window.alternarFocoPainelFluido = (painelAlvo) => {
-        const grid = document.getElementById("mainDetailSplitGrid");
-        const btnLaudos = document.getElementById("btnFocoLaudosFluido");
-        const btnGraficos = document.getElementById("btnFocoGraficosFluido");
-
-        if (modoFocoFluido === painelAlvo) {
-            grid.classList.remove("foco-laudos", "foco-graficos");
-            btnLaudos.innerText = "⤢";
-            btnGraficos.innerText = "⤢";
-            modoFocoFluido = "PADRAO";
-        } else {
-            if (painelAlvo === "LAUDOS") {
-                grid.classList.remove("foco-graficos");
-                grid.classList.add("foco-laudos");
-                btnLaudos.innerText = "⤡";
-                btnGraficos.innerText = "⤢";
-                modoFocoFluido = "LAUDOS";
-            } else if (painelAlvo === "GRAFICOS") {
-                grid.classList.remove("foco-laudos");
-                grid.classList.add("foco-graficos");
-                btnGraficos.innerText = "⤡";
-                btnLaudos.innerText = "⤢";
-                modoFocoFluido = "GRAFICOS";
-            }
-        }
-
-        setTimeout(() => {
-            if (barChartFluido) barChartFluido.resize();
-            if (pieChartFluido) pieChartFluido.resize();
-            if (temporalChartFluido) temporalChartFluido.resize();
-        }, 320);
-    };
-
-    window.toggleMinimizarFluido = (elementId, btn) => {
-        const bodyEl = document.getElementById(elementId);
-        if (!bodyEl) return;
-        const isMin = bodyEl.classList.toggle("minimized");
-        btn.innerText = isMin ? "⤢" : "—";
-        if (!isMin) {
-            setTimeout(() => {
-                if (barChartFluido) barChartFluido.resize();
-                if (pieChartFluido) pieChartFluido.resize();
-                if (temporalChartFluido) temporalChartFluido.resize();
-            }, 300);
-        }
-    };
-
-    window.navegarGraficoFluido = (direcao) => {
-        slideGraficoFluidoAtual += direcao;
-        if (slideGraficoFluidoAtual > 3) slideGraficoFluidoAtual = 1;
-        if (slideGraficoFluidoAtual < 1) slideGraficoFluidoAtual = 3;
-
-        document.getElementById("slideGraficoFluido1").classList.toggle("active", slideGraficoFluidoAtual === 1);
-        document.getElementById("slideGraficoFluido2").classList.toggle("active", slideGraficoFluidoAtual === 2);
-        document.getElementById("slideGraficoFluido3").classList.toggle("active", slideGraficoFluidoAtual === 3);
-
-        const lblTitle = document.getElementById("labelNomeGraficoAtivoFluido");
-        const filtrosTemp = document.getElementById("filtrosInlineTemporalFluido");
-        document.getElementById("indicadorSlideGraficoFluido").innerText = `${slideGraficoFluidoAtual} / 3`;
+        doc.save(`Relatorio_Fluidos_MATH_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`); };  window.alternarFocoPainelFluido = (painelAlvo) => { const grid = document.getElementById("mainDetailSplitGrid"); const btnLaudos = document.getElementById("btnFocoLaudosFluido"); const btnGraficos = document.getElementById("btnFocoGraficosFluido");  if (modoFocoFluido === painelAlvo) { grid.classList.remove("foco-laudos", "foco-graficos"); btnLaudos.innerText = "⤢"; btnGraficos.innerText = "⤢"; modoFocoFluido = "PADRAO"; } else { if (painelAlvo === "LAUDOS") { grid.classList.remove("foco-graficos"); grid.classList.add("foco-laudos"); btnLaudos.innerText = "⤡"; btnGraficos.innerText = "⤢"; modoFocoFluido = "LAUDOS"; } else if (painelAlvo === "GRAFICOS") { grid.classList.remove("foco-laudos"); grid.classList.add("foco-graficos"); btnGraficos.innerText = "⤡"; btnLaudos.innerText = "⤢"; modoFocoFluido = "GRAFICOS"; } }  setTimeout(() => { if (barChartFluido) barChartFluido.resize(); if (pieChartFluido) pieChartFluido.resize(); if (temporalChartFluido) temporalChartFluido.resize(); }, 320); };  window.toggleMinimizarFluido = (elementId, btn) => { const bodyEl = document.getElementById(elementId); if (!bodyEl) return; const isMin = bodyEl.classList.toggle("minimized"); btn.innerText = isMin ? "⤢" : "—"; if (!isMin) { setTimeout(() => { if (barChartFluido) barChartFluido.resize(); if (pieChartFluido) pieChartFluido.resize(); if (temporalChartFluido) temporalChartFluido.resize(); }, 300); } };  window.navegarGraficoFluido = (direcao) => { slideGraficoFluidoAtual += direcao; if (slideGraficoFluidoAtual > 3) slideGraficoFluidoAtual = 1; if (slideGraficoFluidoAtual < 1) slideGraficoFluidoAtual = 3;  document.getElementById("slideGraficoFluido1").classList.toggle("active", slideGraficoFluidoAtual === 1); document.getElementById("slideGraficoFluido2").classList.toggle("active", slideGraficoFluidoAtual === 2); document.getElementById("slideGraficoFluido3").classList.toggle("active", slideGraficoFluidoAtual === 3);  const lblTitle = document.getElementById("labelNomeGraficoAtivoFluido"); const filtrosTemp = document.getElementById("filtrosInlineTemporalFluido"); document.getElementById("indicadorSlideGraficoFluido").innerText = `${slideGraficoFluidoAtual} / 3`;
 
         filtrosTemp.style.display = (slideGraficoFluidoAtual === 3) ? "flex" : "none";
 
@@ -1810,11 +1641,7 @@ const firebaseConfig = {
             else countNorm++;
         });
 
-        document.getElementById("kpiLabelTotalGeral").innerText = `${todosLaudos.length} LAUDOS`;
-        document.getElementById("kpiCountCriticos").innerText = countCrit;
-        document.getElementById("kpiCountAlertas").innerText = countWarn;
-        document.getElementById("kpiCountNormais").innerText = countNorm;
-        document.getElementById("kpiFooterTotalAtivos").innerText = `${listaAtivosUnicos.length} ATIVOS MONITORADOS`;
+        document.getElementById("kpiLabelTotalGeral").innerText = `${todosLaudos.length} LAUDOS`; document.getElementById("kpiCountCriticos").innerText = countCrit; document.getElementById("kpiCountAlertas").innerText = countWarn; document.getElementById("kpiCountNormais").innerText = countNorm; document.getElementById("kpiFooterTotalAtivos").innerText = `${listaAtivosUnicos.length} ATIVOS MONITORADOS`;
         document.getElementById("labelTotalFrotaTop").innerText = `${listaAtivosUnicos.length} ATIVOS EM MONITORAMENTO`;
     };
 
@@ -1877,8 +1704,7 @@ const firebaseConfig = {
                     <div class="lab-text-body"><strong>Diagnóstico:</strong> ${l.diagnostico || 'Sem observações textuais cadastradas.'}</div>
                     ${l.acao ? `<div class="lab-action-text"> <strong>Recomendação:</strong> ${l.acao}</div>` : ''}
 
-                    ${galeriaHtml}
-                    ${blocoLiberacaoHtml}
+                    ${galeriaHtml}${blocoLiberacaoHtml}
 
                     <div class="lab-footer-dates">
                         <div class="datas-duplas-container">
@@ -2034,351 +1860,4 @@ const firebaseConfig = {
         const anosOrdenados = Array.from(anosSet).sort((a,b) => Number(b) - Number(a));
         const valorAnt = selAno.value;
         selAno.innerHTML = "";
-        anosOrdenados.forEach(a => selAno.innerHTML += `<option value="${a}">${a}</option>`);
-        if (anosSet.has(valorAnt)) selAno.value = valorAnt;
-        else selAno.value = anosOrdenados[0];
-    };
-
-    window.atualizarGraficoTemporalFluido = () => {
-        if (!window.Chart) return;
-        const selAnoEl = document.getElementById("selAnoTemporalFluido");
-        const selLocoEl = document.getElementById("selLocoTemporalFluido");
-        if (!selAnoEl || !selLocoEl) return;
-
-        const selAno = selAnoEl.value;
-        const selLoco = selLocoEl.value;
-        const eLight = document.body.classList.contains("light-theme");
-        const corTexto = eLight ? "#0f172a" : "#f8fafc";
-        const corGrid = eLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.03)";
-
-        const contagemMeses = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-
-        todosLaudos.forEach(l => {
-            const raw = l.dataColeta || l.dataLaudo;
-            if (!raw) return;
-            const t = parseDataSegura(raw);
-            if (t === 0) return;
-            const d = new Date(t);
-            if (isNaN(d.getTime())) return;
-
-            const anoL = String(d.getFullYear());
-            const mesIdx = d.getMonth();
-            const locoLimpa = String(l.locomotiva || '').replace(/\D/g, '');
-
-            if (anoL === selAno && (selLoco === "TODAS" || locoLimpa === selLoco) && mesIdx >= 0 && mesIdx < 12) {
-                contagemMeses[mesIdx]++;
-            }
-        });
-
-        const canvasEl = document.getElementById("chartTemporalFluidoBar");
-        if (!canvasEl) return;
-        const ctxTemporal = canvasEl.getContext("2d");
-        if (temporalChartFluido) temporalChartFluido.destroy();
-
-        const gradTemporal = ctxTemporal.createLinearGradient(0, 0, 0, 390);
-        gradTemporal.addColorStop(0, '#0284c7');
-        gradTemporal.addColorStop(1, 'rgba(2, 132, 199, 0.15)');
-
-        temporalChartFluido = new Chart(ctxTemporal, {
-            type: 'bar',
-            data: {
-                labels: mesesNomesAbrev,
-                datasets: [{ label: `Laudos (${selAno})`, data: contagemMeses, backgroundColor: gradTemporal, borderColor: '#0284c7', borderWidth: 1, borderRadius: 4 }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { color: corGrid }, ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10 } } },
-                    y: { grid: { color: corGrid }, ticks: { color: corTexto, font: { family: 'JetBrains Mono', size: 10 }, stepSize: 1 }, beginAtZero: true }
-                }
-            }
-        });
-    };
-
-    window.processarFotoFluido = (input) => {
-        if (input.files && input.files[0]) {
-            if (fotosTemp.length >= 3) return alert("Limite de 3 fotos atingido!");
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    const MAX_WIDTH = 1000;
-                    let width = img.width, height = img.height;
-                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                    canvas.width = width; canvas.height = height;
-                    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-                    ctx.drawImage(img, 0, 0, width, height);
-                    fotosTemp.push(canvas.toDataURL('image/jpeg', 0.85));
-                    renderizarBufferFotos();
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(input.files[0]);
-        }
-    };
-
-    const renderizarBufferFotos = () => {
-        const box = document.getElementById("previewUploadFluido");
-        if (!box) return;
-        box.innerHTML = "";
-        fotosTemp.forEach((src, idx) => {
-            box.innerHTML += `
-                <div style="position:relative; width:50px; height:50px;">
-                    <img src="${src}" style="width:100%; height:100%; object-fit:cover; border-radius:4px;">
-                    <button type="button" onclick="window.removerFotoBuffer(${idx})" style="position:absolute; top:-4px; right:-4px; background:var(--accent-red); color:#fff; border:none; font-size:8px; border-radius:50%; width:14px; height:14px; cursor:pointer;">X</button>
-                </div>`;
-        });
-    };
-
-    window.removerFotoBuffer = (idx) => {
-        fotosTemp.splice(idx, 1);
-        renderizarBufferFotos();
-    };
-
-    window.limparFormularioCampos = () => {
-        document.getElementById("cadNumLaudoForm").value = "";
-        document.getElementById("cadDataColetaForm").value = "";
-        document.getElementById("cadDataLaudoForm").value = "";
-        document.getElementById("cadDiagForm").value = "";
-        document.getElementById("cadAcaoForm").value = "";
-        document.getElementById("cadDataConcForm").value = "";
-        document.getElementById("cadAtivCorrForm").value = "";
-        document.getElementById("photoInputFluido").value = "";
-        document.getElementById("cadCritForm").value = "NORMAL";
-        document.getElementById("cadStatusIntervForm").value = "PENDENTE";
-        fotosTemp = [];
-        renderizarBufferFotos();
-    };
-
-    window.prepararEdicaoLaudo = (laudo) => {
-        document.getElementById("editLaudoId").value = laudo.id;
-        document.getElementById("cadLocoForm").value = String(laudo.locomotiva).replace(/\D/g, '') || laudo.locomotiva;
-        document.getElementById("cadCompForm").value = laudo.componente;
-        document.getElementById("cadCritForm").value = laudo.criticidade;
-        document.getElementById("cadDataColetaForm").value = formatarData(laudo.dataColeta);
-        document.getElementById("cadDataLaudoForm").value = formatarData(laudo.dataLaudo || laudo.dataColeta);
-        document.getElementById("cadNumLaudoForm").value = laudo.numeroLaudo || "";
-        document.getElementById("cadDiagForm").value = laudo.diagnostico || "";
-        document.getElementById("cadAcaoForm").value = laudo.acao || "";
-
-        document.getElementById("cadStatusIntervForm").value = laudo.statusIntervencao || "PENDENTE";
-        document.getElementById("cadDataConcForm").value = formatarData(laudo.dataConclusao);
-        document.getElementById("cadAtivCorrForm").value = laudo.atividadesCorretivas || "";
-        
-        fotosTemp = Array.isArray(laudo.fotos) ? [...laudo.fotos] : [];
-        renderizarBufferFotos();
-
-        const formBody = document.getElementById("bodyAdminCadastroForm");
-        if (formBody && formBody.classList.contains("minimized")) formBody.classList.remove("minimized");
-
-        document.getElementById("formTitle").innerText = `EDITANDO: LOCO ${laudo.locomotiva}`;
-        document.getElementById("btnSalvarAnalise").innerText = "SALVAR ALTERAÇÕES COMPLETAS";
-        document.getElementById("btnCancelarEdicao").style.display = "block";
-
-        document.getElementById("painelAdminCadastro").scrollIntoView({ behavior: 'smooth' });
-    };
-
-    window.cancelarEdicao = () => {
-        document.getElementById("editLaudoId").value = "";
-        document.getElementById("cadNumLaudoForm").value = "";
-        document.getElementById("cadDiagForm").value = "";
-        document.getElementById("cadAcaoForm").value = "";
-        document.getElementById("cadStatusIntervForm").value = "PENDENTE";
-        document.getElementById("cadDataConcForm").value = "";
-        document.getElementById("cadAtivCorrForm").value = "";
-        fotosTemp = [];
-        renderizarBufferFotos();
-
-        const hojeBR = obterDataAtualBR();
-        document.getElementById('cadDataColetaForm').value = hojeBR;
-        document.getElementById('cadDataLaudoForm').value = hojeBR;
-
-        document.getElementById("formTitle").innerText = "REGISTRAR NOVA ANÁLISE";
-        document.getElementById("btnSalvarAnalise").innerText = "GRAVAR ANÁLISE NO BANCO";
-        document.getElementById("btnCancelarEdicao").style.display = "none";
-    };
-
-    window.salvarNovaAnalise = async () => {
-        const passDigitada = document.getElementById("adminPassFluido").value;
-        const valido = await validarCredencialOperacional(passDigitada);
-        if (!valido) return alert("Autenticação inválida!");
-
-        const dataColetaBR = document.getElementById("cadDataColetaForm").value;
-        const dataLaudoBR = document.getElementById("cadDataLaudoForm").value || dataColetaBR;
-        if (!dataColetaBR) return alert("Preencha a data da coleta.");
-
-        const idEdicao = document.getElementById("editLaudoId").value;
-        const locoAlvo = String(document.getElementById("cadLocoForm").value).replace(/\D/g, '');
-
-        const payload = {
-            locomotiva: locoAlvo,
-            componente: String(document.getElementById("cadCompForm").value),
-            criticidade: String(document.getElementById("cadCritForm").value),
-            numeroLaudo: String(document.getElementById("cadNumLaudoForm").value || "N/I").trim(),
-            dataColeta: converterParaDataArmazenamento(dataColetaBR),
-            dataLaudo: converterParaDataArmazenamento(dataLaudoBR),
-            diagnostico: String(document.getElementById("cadDiagForm").value || "").trim(),
-            acao: String(document.getElementById("cadAcaoForm").value || "").trim(),
-            fotos: Array.isArray(fotosTemp) ? fotosTemp : [],
-            statusIntervencao: document.getElementById("cadStatusIntervForm").value,
-            dataConclusao: converterParaDataArmazenamento(document.getElementById("cadDataConcForm").value),
-            atividadesCorretivas: document.getElementById("cadAtivCorrForm").value.trim()
-        };
-
-        if (idEdicao) {
-            update(ref(db, `laudos_laboratoriais/${idEdicao}`), payload)
-                .then(() => {
-                    alert("Registro e intervenção atualizados com sucesso!");
-                    window.cancelarEdicao();
-                    document.getElementById("adminPassFluido").value = "";
-                })
-                .catch(err => alert("Erro ao atualizar: " + err.message));
-        } else {
-            push(ref(db, 'laudos_laboratoriais'), payload)
-                .then(() => {
-                    alert("Nova análise registrada com sucesso!");
-                    window.cancelarEdicao();
-                    document.getElementById("adminPassFluido").value = "";
-                })
-                .catch(err => alert("Erro ao salvar: " + err.message));
-        }
-    };
-
-    window.deletarLaudo = async (id) => {
-        const pass = prompt("Senha do Inspetor:");
-        const valido = await validarCredencialOperacional(pass);
-        if (valido) {
-            remove(ref(db, `laudos_laboratoriais/${id}`))
-                .then(() => alert("Registro excluído com sucesso."))
-                .catch(err => alert("Erro ao excluir: " + err.message));
-        } else {
-            alert("Senha incorreta!");
-        }
-    };
-
-    function sincronizarSelectAtivos() {
-        const select = document.getElementById("cadLocoForm");
-        const selectTemporal = document.getElementById("selLocoTemporalFluido");
-
-        if (select) {
-            select.innerHTML = "";
-            listaAtivosUnicos.forEach(a => {
-                select.innerHTML += `<option value="${a.prefixo}">${a.modelo || 'GE-U20-C'} ${a.prefixo}</option>`;
-            });
-            select.value = locoSelecionada;
-        }
-
-        if (selectTemporal) {
-            selectTemporal.innerHTML = `<option value="TODAS">FROTA COMPLETA</option>`;
-            listaAtivosUnicos.forEach(a => {
-                selectTemporal.innerHTML += `<option value="${a.prefixo}">${a.prefixo}</option>`;
-            });
-        }
-    }
-
-    function inicializarAplicacao() {
-        document.getElementById("telaLogin").style.display = "none";
-        document.getElementById("painelPrincipal").style.display = "block";
-
-        const usuarioSessao = localStorage.getItem("fluidos_session") || "Operador";
-        const roleSessao = localStorage.getItem("fluidos_role") || "INSPETOR";
-        
-        const badgeUser = document.getElementById("badgeCurrentUser");
-        if (badgeUser) badgeUser.innerText = `${usuarioSessao.toUpperCase()} [${roleSessao}]`;
-
-        const btnAdminUsers = document.getElementById("btnAdminGestaoUsers");
-        if (btnAdminUsers) {
-            btnAdminUsers.style.display = (usuarioSessao.toLowerCase().includes("matheus")) ? "inline-flex" : "none";
-        }
-
-        if (localStorage.getItem("visao_theme") === "light") {
-            document.body.classList.add("light-theme");
-        }
-
-        const hojeBR = obterDataAtualBR();
-        const inputDataColeta = document.getElementById('cadDataColetaForm');
-        const inputDataLaudo = document.getElementById('cadDataLaudoForm');
-        const inputDataConc = document.getElementById('cadDataConcForm');
-
-        if (inputDataColeta) { inputDataColeta.value = hojeBR; aplicarMascaraDataBR(inputDataColeta); }
-        if (inputDataLaudo) { inputDataLaudo.value = hojeBR; aplicarMascaraDataBR(inputDataLaudo); }
-        if (inputDataConc) { aplicarMascaraDataBR(inputDataConc); }
-
-        setTimeout(() => { inicializarGraficosFluidos(); }, 60);
-
-        onValue(ref(db, 'ativos'), (snap) => {
-            listaAtivos = [];
-            if (snap.exists()) {
-                snap.forEach(child => listaAtivos.push({ id: child.key, ...child.val() }));
-            } else {
-                const frotaPadrao = [
-                    { modelo: "GE-U20-C", prefixo: "2613" }, { modelo: "GE-U20-C", prefixo: "2625" },
-                    { modelo: "GE-U20-C", prefixo: "2629" }, { modelo: "GE-U20-C", prefixo: "2670" },
-                    { modelo: "GE-U20-C", prefixo: "2640" }, { modelo: "GE-U20-C", prefixo: "3863" },
-                    { modelo: "GE-U20-C", prefixo: "7804" }
-                ];
-                frotaPadrao.forEach(a => push(ref(db, 'ativos'), a));
-                return;
-            }
-
-            consolidarAtivosSemDuplicatas();
-
-            if (!listaAtivosUnicos.some(a => a.prefixo === locoSelecionada) && listaAtivosUnicos.length > 0) {
-                locoSelecionada = listaAtivosUnicos[0].prefixo;
-            }
-
-            sincronizarSelectAtivos();
-            atualizarBannerAtivo();
-            atualizarCardContabilizacao();
-            sincronizarDadosGraficosFluidos();
-            window.filtrarGavetaAtivos();
-        });
-
-        onValue(ref(db, 'laudos_laboratoriais'), (snap) => {
-            todosLaudos = [];
-            if (snap.exists()) {
-                snap.forEach(child => todosLaudos.push({ id: child.key, ...child.val() }));
-            }
-            window.renderizarTimelineLoco();
-            atualizarBannerAtivo();
-            atualizarCardContabilizacao();
-            sincronizarDadosGraficosFluidos();
-            window.filtrarGavetaAtivos();
-        });
-    }
-
-    async function start() {
-        if (tokenAcesso) {
-            try {
-                const snap = await get(ref(db, `chaves/${tokenAcesso}`));
-                if (!snap.exists() || snap.val().expira < Date.now()) { 
-                    document.body.innerHTML = "<h2 style='color:var(--text-main); font-family:JetBrains Mono; text-align:center; padding-top:100px;'>ACESSO EXPIRADO</h2>"; 
-                    return; 
-                }
-                inicializarAplicacao();
-                document.getElementById("painelAdminCadastro")?.style.setProperty("display", "none");
-                document.getElementById("btnCompartilhar")?.style.setProperty("display", "none");
-                document.getElementById("btnLogout")?.style.setProperty("display", "none");
-                document.getElementById("btnAdminGestaoUsers")?.style.setProperty("display", "none");
-            } catch (err) {
-                console.error("Falha ao validar token:", err);
-            }
-        } else {
-            const sessaoAtiva = localStorage.getItem("fluidos_session");
-            if (sessaoAtiva) {
-                inicializarAplicacao();
-            } else {
-                document.getElementById("telaLogin").style.display = "flex";
-                document.getElementById("painelPrincipal").style.display = "none";
-            }
-        }
-    }
-
-    start();
-</script>
-</body>
-</html>
+        anosOrdenados.forEach(a => selAno.innerHTML += `<option
